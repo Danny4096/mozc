@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright 2010-2021, Google Inc.
 # All rights reserved.
 #
@@ -28,41 +27,9 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""A helper script to extract native libraries from an *.apk file."""
+"""A no-op implementation used on non-Windows platforms."""
 
-import argparse
-import pathlib
-import zipfile
-
-
-def extract_native_libs(apk: pathlib.Path, dest: pathlib.Path) -> None:
-  """Extract native libraries from an APK.
-
-  Args:
-    apk: APK file from which native libraries will be extracted.
-    dest: ZIP file to which native libraries will be extracted.
-  """
-  with zipfile.ZipFile(apk) as z:
-    with zipfile.ZipFile(dest, mode='w') as output:
-      for info in z.infolist():
-        paths = info.filename.split('/')
-        if '..' in paths:
-          continue
-        if len(paths) < 1:
-          continue
-        if paths[0] != 'lib':
-          continue
-        output.writestr(info, z.read(info))
-
-
-def main():
-  parser = argparse.ArgumentParser()
-  parser.add_argument('--input', help='A path to APK', type=str)
-  parser.add_argument('--output', help='A path to output ZIP file', type=str)
-  args = parser.parse_args()
-
-  extract_native_libs(pathlib.Path(args.input), pathlib.Path(args.output))
-
-
-if __name__ == '__main__':
-  main()
+def windows_resource(name, **kwargs):
+    _ignore = name  # @unused
+    _ignore = kwargs  # @unused
+    pass

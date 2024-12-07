@@ -37,6 +37,7 @@
 #include <memory>
 #include <string>
 
+#include "absl/strings/string_view.h"
 #include "absl/time/time.h"
 #include "composer/composer.h"
 #include "composer/table.h"
@@ -228,11 +229,6 @@ class Session : public SessionInterface {
   // Stops key toggling in the composer.
   bool StopKeyToggling(mozc::commands::Command *command);
 
-  // Send a command to the composer to append a special string.
-  bool SendComposerCommand(
-      mozc::composer::Composer::InternalCommand composer_command,
-      mozc::commands::Command *command);
-
   bool ReportBug(mozc::commands::Command *command);
 
   void SetConfig(const mozc::config::Config *config) override;
@@ -324,7 +320,7 @@ class Session : public SessionInterface {
   void CommitCompositionDirectly(commands::Command *command);
   void CommitSourceTextDirectly(commands::Command *command);
   void CommitRawTextDirectly(commands::Command *command);
-  void CommitStringDirectly(const std::string &key, const std::string &preedit,
+  void CommitStringDirectly(absl::string_view key, absl::string_view preedit,
                             commands::Command *command);
   bool CommitInternal(commands::Command *command,
                       bool trigger_zero_query_suggest);

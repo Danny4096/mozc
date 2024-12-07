@@ -40,7 +40,9 @@
 #include "absl/strings/string_view.h"
 #include "absl/types/span.h"
 #include "converter/converter_interface.h"
+#include "converter/history_reconstructor.h"
 #include "converter/immutable_converter_interface.h"
+#include "converter/reverse_converter.h"
 #include "converter/segments.h"
 #include "dictionary/pos_matcher.h"
 #include "dictionary/suppression_dictionary.h"
@@ -54,47 +56,22 @@ namespace mozc {
 
 class Converter final : public ConverterInterface {
  public:
-  Converter() = default;
+  Converter(const engine::Modules &modules,
+            const ImmutableConverterInterface &immutable_converter);
 
   // Lazily initializes the internal members. Must be called before the use.
-  void Init(const engine::Modules &modules,
-            std::unique_ptr<prediction::PredictorInterface> predictor,
-            std::unique_ptr<RewriterInterface> rewriter,
-            ImmutableConverterInterface *immutable_converter);
+  void Init(std::unique_ptr<prediction::PredictorInterface> predictor,
+            std::unique_ptr<RewriterInterface> rewriter);
 
   ABSL_MUST_USE_RESULT
   bool StartConversion(const ConversionRequest &request,
                        Segments *segments) const override;
-  ABSL_MUST_USE_RESULT
-  bool StartConversionWithKey(Segments *segments,
-                              absl::string_view key) const override;
   ABSL_MUST_USE_RESULT
   bool StartReverseConversion(Segments *segments,
                               absl::string_view key) const override;
   ABSL_MUST_USE_RESULT
   bool StartPrediction(const ConversionRequest &request,
                        Segments *segments) const override;
-  ABSL_MUST_USE_RESULT
-  bool StartPredictionWithKey(Segments *segments,
-                              absl::string_view key) const override;
-  ABSL_MUST_USE_RESULT
-  bool StartSuggestion(const ConversionRequest &request,
-                       Segments *segments) const override;
-  ABSL_MUST_USE_RESULT
-  bool StartSuggestionWithKey(Segments *segments,
-                              absl::string_view key) const override;
-  ABSL_MUST_USE_RESULT
-  bool StartPartialPrediction(const ConversionRequest &request,
-                              Segments *segments) const override;
-  ABSL_MUST_USE_RESULT
-  bool StartPartialPredictionWithKey(Segments *segments,
-                                     absl::string_view key) const override;
-  ABSL_MUST_USE_RESULT
-  bool StartPartialSuggestion(const ConversionRequest &request,
-                              Segments *segments) const override;
-  ABSL_MUST_USE_RESULT
-  bool StartPartialSuggestionWithKey(Segments *segments,
-                                     absl::string_view key) const override;
 
   void FinishConversion(const ConversionRequest &request,
                         Segments *segments) const override;
@@ -134,11 +111,15 @@ class Converter final : public ConverterInterface {
       size_t start_segment_index, size_t segments_size,
       absl::Span<const uint8_t> new_size_array) const override;
 
+  // Execute ImmutableConverter, Rewriters, SuppressionDictionary.
+  // ApplyConversion does not initialize the Segment unlike StartConversion.
+  void ApplyConversion(Segments *segments,
+                       const ConversionRequest &request) const;
+
  private:
   FRIEND_TEST(ConverterTest, CompletePosIds);
   FRIEND_TEST(ConverterTest, DefaultPredictor);
   FRIEND_TEST(ConverterTest, MaybeSetConsumedKeySizeToSegment);
-  FRIEND_TEST(ConverterTest, GetLastConnectivePart);
   FRIEND_TEST(ConverterTest, PredictSetKey);
 
   // Complete Left id/Right id if they are not defined.
@@ -182,20 +163,16 @@ class Converter final : public ConverterInterface {
   bool GetLastConnectivePart(absl::string_view preceding_text, std::string *key,
                              std::string *value, uint16_t *id) const;
 
-  ABSL_MUST_USE_RESULT bool Predict(const ConversionRequest &request,
-                                    absl::string_view key,
-                                    Segments *segments) const;
+  const engine::Modules &modules_;
+  const ImmutableConverterInterface &immutable_converter_;
+  const dictionary::PosMatcher &pos_matcher_;
+  const dictionary::SuppressionDictionary &suppression_dictionary_;
+  const converter::HistoryReconstructor history_reconstructor_;
+  const converter::ReverseConverter reverse_converter_;
+  const uint16_t general_noun_id_ = std::numeric_limits<uint16_t>::max();
 
-  ABSL_MUST_USE_RESULT bool Convert(const ConversionRequest &request,
-                                    absl::string_view key,
-                                    Segments *segments) const;
-
-  const dictionary::PosMatcher *pos_matcher_ = nullptr;
-  const dictionary::SuppressionDictionary *suppression_dictionary_;
   std::unique_ptr<prediction::PredictorInterface> predictor_;
   std::unique_ptr<RewriterInterface> rewriter_;
-  const ImmutableConverterInterface *immutable_converter_ = nullptr;
-  uint16_t general_noun_id_ = std::numeric_limits<uint16_t>::max();
 };
 
 }  // namespace mozc

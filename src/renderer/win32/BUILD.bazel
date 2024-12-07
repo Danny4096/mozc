@@ -35,8 +35,8 @@ load(
     "mozc_cc_binary",
     "mozc_cc_library",
     "mozc_cc_test",
+    "mozc_win32_resource_from_template",
 )
-load("//bazel:stubs.bzl", "windows")
 
 package(
     default_visibility = ["//renderer:__pkg__"],
@@ -49,7 +49,7 @@ mozc_cc_binary(
     srcs = ["win32_renderer_main.cc"],
     tags = MOZC_TAGS.WIN_ONLY,
     target_compatible_with = ["@platforms//os:windows"],
-    visibility = ["//win32/installer:__subpackages__"],
+    visibility = ["//win32/installer:__subpackages__"],  # Scheuklappen: keep
     deps = [
         ":win32_renderer_main_resources",
         ":win32_server",
@@ -59,13 +59,11 @@ mozc_cc_binary(
     ],
 )
 
-windows.resource_files(
+mozc_win32_resource_from_template(
     name = "win32_renderer_main_resources",
+    src = "mozc_renderer.rc",
     manifests = [
         "mozc_renderer.exe.manifest",
-    ],
-    rc_files = [
-        "mozc_renderer.rc",
     ],
     resources = [
         "resource.h",
@@ -110,7 +108,7 @@ mozc_cc_library(
         "//bazel/win32:msimg32",
         "//bazel/win32:user32",
         "//client:client_interface",
-        "//protocol:candidates_cc_proto",
+        "//protocol:candidate_window_cc_proto",
         "//protocol:commands_cc_proto",
         "//protocol:renderer_cc_proto",
         "//renderer:renderer_style_handler",
@@ -215,7 +213,7 @@ mozc_cc_library(
         "//bazel/win32:gdi32",
         "//bazel/win32:user32",
         "//client:client_interface",
-        "//protocol:candidates_cc_proto",
+        "//protocol:candidate_window_cc_proto",
         "//protocol:commands_cc_proto",
         "//protocol:renderer_cc_proto",
         "//renderer:renderer_style_handler",
@@ -236,7 +234,7 @@ mozc_cc_library(
         ":win32_renderer_util",
         "//base:coordinates",
         "//client:client_interface",
-        "//protocol:candidates_cc_proto",
+        "//protocol:candidate_window_cc_proto",
         "//protocol:commands_cc_proto",
         "//protocol:renderer_cc_proto",
         "//renderer:window_util",

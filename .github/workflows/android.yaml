@@ -13,8 +13,8 @@ concurrency:
 
 jobs:
   build:
-    # https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2204-Readme.md
-    runs-on: ubuntu-22.04
+    # https://github.com/actions/runner-images/blob/main/images/ubuntu/Ubuntu2404-Readme.md
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
 
     steps:
@@ -29,6 +29,8 @@ jobs:
 
       - name: build
         working-directory: ./src
+        env:
+          USE_BAZEL_VERSION: "7.4.1"
         run: |
           bazel build --config oss_android package --config release_build
 

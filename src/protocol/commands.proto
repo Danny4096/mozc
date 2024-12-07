@@ -37,7 +37,7 @@ syntax = "proto2";
 
 package mozc.commands;
 
-import "protocol/candidates.proto";
+import "protocol/candidate_window.proto";
 import "protocol/config.proto";
 import "protocol/engine_builder.proto";
 import "protocol/user_dictionary_storage.proto";
@@ -573,7 +573,7 @@ message Capability {
       [default = NO_TEXT_DELETION_CAPABILITY];
 }
 
-// Next ID: 97
+// Next ID: 105
 // Bundles together some Android experiment flags so that they can be easily
 // retrieved throughout the native code.  These flags are generally specific to
 // the decoder, and are made available when the decoder is initialized.
@@ -593,12 +593,18 @@ message DecoderExperimentParams {
   // Bitmap of enabled variation character types.
   optional uint32 variation_character_types = 8 [default = 0];
 
-  // Applies the number decoder to the output of typing corrector
-  optional bool typing_correction_enable_number_decoder = 89 [default = false];
-
   // Enables final results reranking against literal results.
   // If zero, the previous implementation is used.
   optional int32 typing_correction_result_reranker_mode = 95 [default = 0];
+
+  // Promote TC/Literal if w * tc_reranker_score + (1.0 - w) lm_diff > 0.0.
+  optional float typing_correction_result_reranker_interpolation_weight = 100
+      [default = 0.0];
+
+  // Runs Literal-at-least second when original_tc_score + w * tc_reranker_score
+  // > 0.0. otherwise, runs literal-on-top.
+  optional float typing_correction_result_reranker_literal_on_top_weight = 101
+      [default = 0.0];
 
   // Uses the typing correction in user history predictor. The size specifies
   // the maximum number of typing corrections used for query lookup.
@@ -643,28 +649,33 @@ message DecoderExperimentParams {
 
   optional int32 max_composition_event_to_process = 64 [default = 2];
 
-  // Remove user history prediction entry when its selected ratio is lower
-  // than the value.
-  optional float user_history_prediction_min_selected_ratio = 78
-      [default = 0.0];
-
   // Offset to promote Katakana candidates in rewriter.
   // The promotion will be disabled if the value is negative.
   optional int32 katakana_promotion_offset = 83 [default = 5];
 
-  // Modestly promote Katakana next to the literal-best candidate
-  // if literal candidate is not confident, i.e., per-character-cost
-  // is larger than `katakana_promotion_min_per_char_cost`.
-  optional int32 katakana_promotion_min_per_char_cost = 90 [default = 0];
+  // Parameters for realtime conversion
+  // (go/mozc-src/converter/immutable_converter.cc for details)
+  //
+  // - Character coverage for single segment
+  // If the total length of the included candidates' value does not exceed this
+  // value, the target candidate will not be filtered even when the boundary is
+  // the same with the top candidate.
+  optional int32 realtime_conversion_single_segment_char_coverage = 98
+      [default = 0];
+  // Cost max diff for first segment to filter candidates.
+  // default_value: 500*log(500)
+  optional int32 realtime_conversion_candidate_checker_cost_max_diff = 99
+      [default = 3107];
 
-  // Aggressively promote Katakana to the literal-best candidate position.
-  // This mode is valid when katakana_promotion_min_per_char_cost
-  // <= katakana_override_min_per_char_cost
-  optional int32 katakana_override_min_per_char_cost = 91 [default = 0];
+  // Cost offset for handwriting conversion candidate.
+  // default_value: 10*log(500)
+  optional int32 handwriting_conversion_candidate_cost_offset = 102
+      [default = 1151];
 
-  // Treats the legacy typing correction candidate as
-  // literal-on-top or literal-at-least-second.
-  optional bool fix_legacy_typing_correction_behavior = 92 [default = false];
+  // Relax the replaceable condition to remember candidate in user segment
+  // history rewriter wheh the target segment contains proper noun candidate.
+  optional bool user_segment_history_rewriter_replace_proper_noun = 103
+      [default = false];
 }
 
 // Clients' request to the server.
@@ -918,7 +929,8 @@ message Request {
   // WARNING: Although cases are mutually exclusive now, they are not
   // necessarily mutually exclusive. However, the current implementation in
   // NormalizationRewriter assumes they are mutually exclusive.
-  // Next ID: 13
+  // LINT.IfChange
+  // Next ID: 14
   enum AdditionalRenderableCharacterGroup {
     // Do not use this case. This case is reserved for future usage.
     // Because 0th element in enum is used as default value, in order to prevend
@@ -955,6 +967,8 @@ message Request {
     EMOJI_15_0 = 9;
     // Emoji 15.1, released September 2023
     EMOJI_15_1 = 12;
+    // Emoji 16.0, released September 2024
+    EMOJI_16_0 = 13;
 
     // Additional Hieroglyphs (U+13000 ~ U+1342E)
     // Unicode 5.2, released October 2009
@@ -963,6 +977,7 @@ message Request {
     // IVS characters in Adobe-Japan1 (U+E0100 ~ U+E010E)
     IVS_CHARACTER = 11;
   }
+  // LINT.ThenChange(rewriter/environmental_filter_rewriter.cc)
 
   // Characters in the union of this list of groups can be contained in
   // candidates.
@@ -1323,7 +1338,7 @@ message Output {
   optional bool consumed = 3;
   optional Result result = 4;
   optional Preedit preedit = 5;
-  optional Candidates candidates = 6;
+  optional CandidateWindow candidate_window = 6;
   optional KeyEvent key = 7;
 
   // when URL is non empty, UI can open the page with a browser,

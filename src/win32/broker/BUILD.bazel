@@ -34,8 +34,8 @@ load(
     "MOZC_TAGS",
     "mozc_cc_binary",
     "mozc_cc_library",
+    "mozc_win32_resource_from_template",
 )
-load("//bazel:stubs.bzl", "windows")
 
 package(
     default_visibility = ["//visibility:private"],
@@ -46,8 +46,9 @@ mozc_cc_binary(
     srcs = ["mozc_broker_main.cc"],
     tags = MOZC_TAGS.WIN_ONLY,
     target_compatible_with = ["@platforms//os:windows"],
-    visibility = ["//win32/installer:__subpackages__"],
+    visibility = ["//win32/installer:__subpackages__"],  # Scheuklappen: keep
     deps = [
+        ":mozc_broker_resource",
         ":prelauncher",
         "//base:crash_report_handler",
         "//base:init_mozc",
@@ -58,13 +59,11 @@ mozc_cc_binary(
     ],
 )
 
-windows.resource_files(
+mozc_win32_resource_from_template(
     name = "mozc_broker_resource",
+    src = "mozc_broker.rc",
     manifests = [
         "mozc_broker.exe.manifest",
-    ],
-    rc_files = [
-        "mozc_broker.rc",
     ],
     resources = [
         "mozc_broker_resource.h",

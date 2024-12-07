@@ -50,7 +50,6 @@
 #include "base/clock_mock.h"
 #include "composer/query.h"
 #include "config/config_handler.h"
-#include "converter/segments.h"
 #include "data_manager/data_manager.h"
 #include "data_manager/testing/mock_data_manager.h"
 #include "engine/engine.h"
@@ -59,8 +58,6 @@
 #include "engine/minimal_engine.h"
 #include "engine/mock_data_engine_factory.h"
 #include "engine/modules.h"
-#include "engine/supplemental_model_interface.h"
-#include "engine/user_data_manager_mock.h"
 #include "protocol/commands.pb.h"
 #include "protocol/config.pb.h"
 #include "session/internal/keymap.h"
@@ -70,7 +67,6 @@
 #include "testing/gunit.h"
 #include "testing/mozctest.h"
 #include "usage_stats/usage_stats_testing_util.h"
-
 
 ABSL_DECLARE_FLAG(int32_t, max_session_size);
 ABSL_DECLARE_FLAG(int32_t, create_session_min_interval);
@@ -619,7 +615,6 @@ TEST_F(SessionHandlerTest, VerifySyncIsCalledTest) {
       commands::Input::CLEANUP,
   };
   for (size_t i = 0; i < std::size(command_types); ++i) {
-    MockUserDataManager mock_user_data_manager;
     auto engine = std::make_unique<MockEngine>();
     EXPECT_CALL(*engine, Sync()).WillOnce(Return(true));
 
@@ -634,7 +629,6 @@ TEST_F(SessionHandlerTest, VerifySyncIsCalledTest) {
 }
 
 TEST_F(SessionHandlerTest, SyncDataTest) {
-  MockUserDataManager mock_user_data_manager;
   auto engine = std::make_unique<MockEngine>();
   EXPECT_CALL(*engine, Sync()).WillOnce(Return(true));
   EXPECT_CALL(*engine, Wait()).WillOnce(Return(true));
@@ -821,6 +815,5 @@ TEST_F(SessionHandlerTest, ReloadFromMinimalEngine) {
   EXPECT_EQ(handler.engine().GetPredictorName(), "MobilePredictor");
   EXPECT_EQ(handler.GetDataVersion(), mock_version_);
 }
-
 
 }  // namespace mozc

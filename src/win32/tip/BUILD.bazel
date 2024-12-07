@@ -35,8 +35,8 @@ load(
     "mozc_cc_binary",
     "mozc_cc_library",
     "mozc_cc_test",
+    "mozc_win32_resource_from_template",
 )
-load("//bazel:stubs.bzl", "windows")
 load(
     "//bazel/win32:build_defs.bzl",
     "features_gdi",
@@ -45,10 +45,15 @@ load(
 mozc_cc_binary(
     name = "mozc_tip",
     srcs = ["mozc_tip_main.cc"],
+    features = ["generate_pdb_file"],
+    linkopts = [
+        "/DEBUG:FULL",
+        "/PDBALTPATH:%_PDB%",
+    ],
     linkshared = True,
     tags = MOZC_TAGS.WIN_ONLY,
     target_compatible_with = ["@platforms//os:windows"],
-    visibility = ["//win32/installer:__subpackages__"],
+    visibility = ["//win32/installer:__subpackages__"],  # Scheuklappen: keep
     win_def_file = "mozc_tip.def",
     deps = [
         ":mozc_tip_resource",
@@ -69,11 +74,9 @@ mozc_cc_binary(
     ],
 )
 
-windows.resource_files(
+mozc_win32_resource_from_template(
     name = "mozc_tip_resource",
-    rc_files = [
-        "tip_resource.rc",
-    ],
+    src = "tip_resource.rc",
     resources = [
         "tip_resource.h",
         "//data/images/win:icons",
@@ -292,7 +295,7 @@ mozc_cc_library(
         ":tip_thread_context",
         ":tip_ui_element_conventional",
         "//base/win32:com",
-        "//protocol:candidates_cc_proto",
+        "//protocol:candidate_window_cc_proto",
         "//protocol:commands_cc_proto",
         "//protocol:renderer_cc_proto",
         "//win32/base:input_state",
@@ -378,7 +381,7 @@ mozc_cc_library(
         "//base/win32:wide_char",
         "//client",
         "//client:client_interface",
-        "//protocol:candidates_cc_proto",
+        "//protocol:candidate_window_cc_proto",
         "//protocol:commands_cc_proto",
     ],
 )
@@ -423,7 +426,7 @@ mozc_cc_library(
         ":tip_text_service",
         "//base/win32:com",
         "//base/win32:wide_char",
-        "//protocol:candidates_cc_proto",
+        "//protocol:candidate_window_cc_proto",
         "//protocol:commands_cc_proto",
         "//protocol:renderer_cc_proto",
         "@com_google_absl//absl/log",
@@ -438,6 +441,7 @@ mozc_cc_library(
     tags = MOZC_TAGS.WIN_ONLY,
     target_compatible_with = ["@platforms//os:windows"],
     deps = [
+        "//client:client_interface",
         "//protocol:commands_cc_proto",
         "//win32/base:config_snapshot",
         "//win32/base:deleter",
@@ -533,7 +537,7 @@ mozc_cc_library(
         "//base:system_util",
         "//base/win32:com",
         "//base/win32:wide_char",
-        "//protocol:candidates_cc_proto",
+        "//protocol:candidate_window_cc_proto",
         "//protocol:commands_cc_proto",
         "//protocol:renderer_cc_proto",
         "//renderer/win32:win32_renderer_client",
@@ -588,7 +592,7 @@ mozc_cc_library(
         "//base/win32:com",
         "//base/win32:wide_char",
         "//client:client_interface",
-        "//protocol:candidates_cc_proto",
+        "//protocol:candidate_window_cc_proto",
         "//protocol:commands_cc_proto",
         "//win32/base:conversion_mode_util",
         "//win32/base:deleter",

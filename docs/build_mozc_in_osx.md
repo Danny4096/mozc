@@ -50,6 +50,7 @@ Building on Mac requires the following software.
   * Xcode 13 (macOS 13 SDK) or later
   * ⚠️Xcode Command Line Tools aren't sufficient.
 * [Bazel](https://docs.bazel.build/versions/master/install-os-x.html) for Bazel build
+  * ⚠️ Bazel 8.x is not yet supported ([#1118](https://github.com/google/mozc/issues/1118))
 * Python 3.9 or later with the following pip module.
   * `requests`
 * CMake 3.18.4 or later (to build Qt6)
@@ -87,7 +88,7 @@ python build_tools/update_deps.py
 In this step, additional build dependencies will be downloaded.
 
   * [Ninja 1.11.0](https://github.com/ninja-build/ninja/releases/download/v1.11.0/ninja-mac.zip)
-  * [Qt 6.7.2](https://download.qt.io/archive/qt/6.7/6.7.2/submodules/qtbase-everywhere-src-6.7.2.tar.xz)
+  * [Qt 6.8.0](https://download.qt.io/archive/qt/6.8/6.8.0/submodules/qtbase-everywhere-src-6.8.0.tar.xz)
   * [git submodules](../.gitmodules)
 
 You can specify `--noqt` option if you would like to use your own Qt binaries.

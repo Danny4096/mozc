@@ -27,20 +27,41 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#import <Foundation/Foundation.h>
-#import <InputMethodKit/InputMethodKit.h>
+#ifndef MOZC_CONVERTER_HISTORY_RECONSTRUCTOR_H_
+#define MOZC_CONVERTER_HISTORY_RECONSTRUCTOR_H_
 
-#import "mac/common.h"
+#include <cstdint>
+#include <string>
 
-// GoogleJapaneseInputServer is a subclass of IMKServer but implements
-// RendererCallback, so it can accept user's click event.
-@interface GoogleJapaneseInputServer : IMKServer <ServerCallback> {
-  // The controller which accepts user's clicks
-  id<ControllerCallback> current_controller_;
-  // NSConnection to communicate with the renderer process
-  NSConnection *renderer_conection_;
-}
+#include "absl/base/attributes.h"
+#include "absl/strings/string_view.h"
+#include "converter/segments.h"
+#include "dictionary/pos_matcher.h"
+#include "testing/friend_test.h"
 
-// Register the NSConnection for the renderer process
-- (BOOL)registerRendererConnection;
-@end
+namespace mozc {
+namespace converter {
+
+class HistoryReconstructor {
+ public:
+  explicit HistoryReconstructor(const dictionary::PosMatcher &pos_matcher);
+
+  ABSL_MUST_USE_RESULT
+  bool ReconstructHistory(absl::string_view preceding_text,
+                          Segments *segments) const;
+
+ private:
+  FRIEND_TEST(HistoryReconstructorTest, GetLastConnectivePart);
+
+  // Returns the substring of |str|. This substring consists of similar script
+  // type and you can use it as preceding text for conversion.
+  bool GetLastConnectivePart(absl::string_view preceding_text, std::string *key,
+                             std::string *value, uint16_t *id) const;
+
+  const dictionary::PosMatcher &pos_matcher_;
+};
+
+}  // namespace converter
+}  // namespace mozc
+
+#endif  // MOZC_CONVERTER_HISTORY_RECONSTRUCTOR_H_

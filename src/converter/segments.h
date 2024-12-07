@@ -57,7 +57,8 @@
 
 #else  // NDEBUG
 #define MOZC_CANDIDATE_LOG(result, message) \
-  {}
+  {                                         \
+  }
 
 #endif  // NDEBUG
 
@@ -131,6 +132,9 @@ class Segment final {
       NO_MODIFICATION = 1 << 16,
       // Candidate which is reranked by user segment history rewriter.
       USER_SEGMENT_HISTORY_REWRITER = 1 << 17,
+      // Keys are expanded in the dictionary lookup. Usually
+      // Kana-modifiers are expanded.
+      KEY_EXPANDED_IN_DICTIONARY = 1 << 18,
     };
     // LINT.ThenChange(//converter/converter_main.cc)
 
@@ -268,14 +272,19 @@ class Segment final {
     class InnerSegmentIterator final {
      public:
       explicit InnerSegmentIterator(const Candidate *candidate)
-          : candidate_(candidate),
+          : inner_segment_boundary_(candidate->inner_segment_boundary),
             key_offset_(candidate->key.data()),
             value_offset_(candidate->value.data()),
             index_(0) {}
 
-      bool Done() const {
-        return index_ == candidate_->inner_segment_boundary.size();
-      }
+      InnerSegmentIterator(absl::Span<const uint32_t> inner_segment_boundary,
+                           absl::string_view key, absl::string_view value)
+          : inner_segment_boundary_(inner_segment_boundary),
+            key_offset_(key.data()),
+            value_offset_(value.data()),
+            index_(0) {}
+
+      bool Done() const { return index_ == inner_segment_boundary_.size(); }
 
       void Next();
       absl::string_view GetKey() const;
@@ -287,10 +296,10 @@ class Segment final {
       size_t GetIndex() const { return index_; }
 
      private:
-      const Candidate *candidate_;
-      const char *key_offset_;
-      const char *value_offset_;
-      size_t index_;
+      const absl::Span<const uint32_t> inner_segment_boundary_;
+      const char *key_offset_ = nullptr;
+      const char *value_offset_ = nullptr;
+      size_t index_ = 0;
     };
 
     // Clears the Candidate with default values. Note that the default

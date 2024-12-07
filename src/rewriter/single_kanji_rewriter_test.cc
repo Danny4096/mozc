@@ -84,6 +84,14 @@ class SingleKanjiRewriterTest : public testing::TestWithTempUserProfile {
     return false;
   }
 
+  static ConversionRequest ConvReq(const commands::Request &request,
+                                   ConversionRequest::RequestType type) {
+    return ConversionRequestBuilder()
+        .SetRequest(request)
+        .SetRequestType(type)
+        .Build();
+  }
+
   const ConversionRequest default_request_;
   std::unique_ptr<testing::MockDataManager> data_manager_;
   PosMatcher pos_matcher_;
@@ -92,11 +100,10 @@ class SingleKanjiRewriterTest : public testing::TestWithTempUserProfile {
 TEST_F(SingleKanjiRewriterTest, CapabilityTest) {
   std::unique_ptr<SingleKanjiRewriter> rewriter(CreateSingleKanjiRewriter());
 
-  ConversionRequest convreq;
   commands::Request request;
-  convreq.set_request(&request);
-
   request.set_mixed_conversion(false);
+  const ConversionRequest convreq =
+      ConvReq(request, ConversionRequest::CONVERSION);
   EXPECT_EQ(rewriter->capability(convreq), RewriterInterface::CONVERSION);
 }
 
@@ -123,18 +130,20 @@ TEST_F(SingleKanjiRewriterTest, SetKeyTest) {
 }
 
 TEST_F(SingleKanjiRewriterTest, MobileEnvironmentTest) {
-  ConversionRequest convreq;
   commands::Request request;
-  convreq.set_request(&request);
   std::unique_ptr<SingleKanjiRewriter> rewriter(CreateSingleKanjiRewriter());
 
   {
     request.set_mixed_conversion(true);
+    const ConversionRequest convreq =
+        ConvReq(request, ConversionRequest::CONVERSION);
     EXPECT_EQ(rewriter->capability(convreq), RewriterInterface::ALL);
   }
 
   {
     request.set_mixed_conversion(false);
+    const ConversionRequest convreq =
+        ConvReq(request, ConversionRequest::CONVERSION);
     EXPECT_EQ(rewriter->capability(convreq), RewriterInterface::CONVERSION);
   }
 }
@@ -245,9 +254,8 @@ TEST_F(SingleKanjiRewriterTest, TriggerConditionForPrediction) {
 
     commands::Request request;
     request_test_util::FillMobileRequest(&request);
-    ConversionRequest convreq;
-    convreq.set_request_type(ConversionRequest::PREDICTION);
-    convreq.set_request(&request);
+    const ConversionRequest convreq =
+        ConvReq(request, ConversionRequest::PREDICTION);
     ASSERT_TRUE(rewriter.capability(convreq) & RewriterInterface::PREDICTION);
     EXPECT_FALSE(rewriter.Rewrite(convreq, &segments));
   }
@@ -258,9 +266,8 @@ TEST_F(SingleKanjiRewriterTest, TriggerConditionForPrediction) {
 
     commands::Request request;
     request_test_util::FillMobileRequestWithHardwareKeyboard(&request);
-    ConversionRequest convreq;
-    convreq.set_request_type(ConversionRequest::PREDICTION);
-    convreq.set_request(&request);
+    const ConversionRequest convreq =
+        ConvReq(request, ConversionRequest::PREDICTION);
     ASSERT_FALSE(rewriter.capability(convreq) & RewriterInterface::PREDICTION);
   }
 
@@ -270,9 +277,8 @@ TEST_F(SingleKanjiRewriterTest, TriggerConditionForPrediction) {
 
     commands::Request request;
     request_test_util::FillMobileRequestWithHardwareKeyboard(&request);
-    ConversionRequest convreq;
-    convreq.set_request_type(ConversionRequest::CONVERSION);
-    convreq.set_request(&request);
+    const ConversionRequest convreq =
+        ConvReq(request, ConversionRequest::CONVERSION);
     ASSERT_TRUE(rewriter.capability(convreq) & RewriterInterface::CONVERSION);
     EXPECT_TRUE(rewriter.Rewrite(convreq, &segments));
   }
@@ -284,11 +290,11 @@ TEST_F(SingleKanjiRewriterTest, NoVariationTest) {
   Segments segments;
   InitSegments("かみ", "神", &segments);  // U+795E
 
-  ConversionRequest svs_convreq;
   commands::Request request;
   request.mutable_decoder_experiment_params()->set_variation_character_types(
       commands::DecoderExperimentParams::NO_VARIATION);
-  svs_convreq.set_request(&request);
+  const ConversionRequest svs_convreq =
+      ConvReq(request, ConversionRequest::CONVERSION);
 
   EXPECT_EQ(segments.segment(0).candidates_size(), 1);
   EXPECT_TRUE(rewriter.Rewrite(svs_convreq, &segments));
@@ -302,11 +308,11 @@ TEST_F(SingleKanjiRewriterTest, SvsVariationTest) {
   Segments segments;
   InitSegments("かみ", "神", &segments);  // U+795E
 
-  ConversionRequest svs_convreq;
   commands::Request request;
   request.mutable_decoder_experiment_params()->set_variation_character_types(
       commands::DecoderExperimentParams::SVS_JAPANESE);
-  svs_convreq.set_request(&request);
+  const ConversionRequest svs_convreq =
+      ConvReq(request, ConversionRequest::CONVERSION);
 
   EXPECT_EQ(segments.segment(0).candidates_size(), 1);
   EXPECT_TRUE(rewriter.Rewrite(svs_convreq, &segments));

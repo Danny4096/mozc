@@ -24,6 +24,8 @@ out_win\Release\Mozc64.msi
 
 Hint: You can also download `Mozc64.msi` from GitHub Actions. Check [Build with GitHub Actions](#build-with-github-actions) for details.
 
+Hint: You can use Bazel to build Mozc (experimental). For details, please see below.
+
 ## Setup
 
 ### System Requirements
@@ -40,6 +42,8 @@ Building Mozc on Windows requires the following software.
     * `six`
     * `requests`
   * `.NET 6` or later (for `dotnet` command).
+
+For additional requirements for building Mozc with Bazel, please see below.
 
 ### Install pip modules
 
@@ -65,7 +69,7 @@ python build_tools/update_deps.py
 In this step, additional build dependencies will be downloaded.
 
   * [Ninja 1.11.0](https://github.com/ninja-build/ninja/releases/download/v1.11.0/ninja-win.zip)
-  * [Qt 6.7.2](https://download.qt.io/archive/qt/6.7/6.7.2/submodules/qtbase-everywhere-src-6.7.2.tar.xz)
+  * [Qt 6.8.0](https://download.qt.io/archive/qt/6.8/6.8.0/submodules/qtbase-everywhere-src-6.8.0.tar.xz)
   * [.NET tools](../dotnet-tools.json)
   * [git submodules](../.gitmodules)
 
@@ -155,6 +159,31 @@ python build_mozc.py runtests -c Release
 ```
 
 Note that you can specify `--qtdir=` option instead of `--noqt` in GYP phase since currently there is no unit test that depends on Qt.
+
+---
+
+## Build with Bazel (experimental)
+
+Additional requirements:
+
+* [Bazel](https://bazel.build/)
+  * ⚠️ Bazel 8.x is not yet supported ([#1118](https://github.com/google/mozc/issues/1118))
+* [MSYS2](https://github.com/msys2/msys2)
+
+After running `build_tools/update_deps.py` and `build_tools/build_qt.py`, run the following command instead of `build_mozc.py`:
+
+```
+bazel --bazelrc=windows.bazelrc build --config oss_windows --config release_build package
+```
+
+You have release build binaries in `bazel-bin\win32\installer\Mozc64.msi`.
+
+### Tips for Bazel setup
+
+* You do not need to install a new JDK just for Mozc.
+* If you installed Bazel via [Scoop](https://scoop.sh), it is recommended to install MSYS2 via Scoop, too.
+
+https://bazel.build/install/windows?hl=ja#install-compilers
 
 ---
 

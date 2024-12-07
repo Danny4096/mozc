@@ -30,13 +30,15 @@
 # Visibility:  please choose a more appropriate default for the package,
 # and update any rules that should be different.
 
+load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load(
     "//:build_defs.bzl",
     "MOZC_TAGS",
     "mozc_cc_binary",
     "mozc_cc_library",
+    "mozc_win32_resource_from_template",
 )
-load("//bazel:stubs.bzl", "windows")
 
 package(default_visibility = ["//:__subpackages__"])
 
@@ -47,6 +49,7 @@ mozc_cc_binary(
     target_compatible_with = ["@platforms//os:windows"],
     deps = [
         ":cache_service_manager",
+        ":mozc_cache_service_resources",
         "//base:system_util",
         "//base/win32:wide_char",
         "//base/win32:winmain",
@@ -54,13 +57,11 @@ mozc_cc_binary(
     ],
 )
 
-windows.resource_files(
+mozc_win32_resource_from_template(
     name = "mozc_cache_service_resources",
+    src = "mozc_cache_service.rc",
     manifests = [
         "mozc_cache_service.exe.manifest",
-    ],
-    rc_files = [
-        "mozc_cache_service.rc",
     ],
     resources = [
         "mozc_cache_service_resource.h",

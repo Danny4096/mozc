@@ -96,6 +96,9 @@ RewriteType GetRewriteTypeAndBase(const SerializedStringArray &suffix_array,
   if (!number_compound_util::IsNumber(suffix_array, pos_matcher, c)) {
     return NO_REWRITE;
   }
+  if (c.attributes & Segment::Candidate::NO_MODIFICATION) {
+    return NO_REWRITE;
+  }
 
   if (Util::GetScriptType(c.content_value) == Util::NUMBER) {
     *arabic_candidate = c;
@@ -304,6 +307,9 @@ void EraseExistingCandidates(
     if (iter == results.end()) {
       continue;
     }
+    if (seg->candidate(pos).attributes & Segment::Candidate::NO_MODIFICATION) {
+      continue;
+    }
 
     seg->erase_candidate(pos);
 
@@ -451,10 +457,7 @@ std::vector<NumberUtil::NumberString> GetNumbersInDefaultOrder(
 
 NumberRewriter::NumberRewriter(const DataManagerInterface *data_manager)
     : pos_matcher_(data_manager->GetPosMatcherData()) {
-  const char *array = nullptr;
-  size_t size = 0;
-  data_manager->GetCounterSuffixSortedArray(&array, &size);
-  const absl::string_view data(array, size);
+  absl::string_view data = data_manager->GetCounterSuffixSortedArray();
   // Data manager is responsible for providing a valid data.  Just verify data
   // in debug build.
   DCHECK(SerializedStringArray::VerifyData(data));
@@ -497,7 +500,7 @@ bool NumberRewriter::RewriteOneSegment(const ConversionRequest &request,
   const bool exec_radix_conversion =
       (segments->conversion_segments_size() == 1 &&
        request.request_type() == ConversionRequest::CONVERSION);
-  const bool should_rarank = ShouldRerankCandidates(request, *segments);
+  const bool should_rerank = ShouldRerankCandidates(request, *segments);
 
   bool modified = false;
   std::vector<RewriteCandidateInfo> rewrite_candidate_infos;
@@ -532,7 +535,7 @@ bool NumberRewriter::RewriteOneSegment(const ConversionRequest &request,
     SetNumberInfoToExistingCandidates(output, pos_matcher_, seg);
 
     const std::vector<Segment::Candidate> number_candidates =
-        GenerateCandidatesToInsert(info.candidate, output, should_rarank);
+        GenerateCandidatesToInsert(info.candidate, output, should_rerank);
 
     // Caution!!!: This invocation will update the data inside of the
     // rewrite_candidate_infos. Thus, |info| also can be updated as well

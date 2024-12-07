@@ -32,7 +32,7 @@
 
 #import <Cocoa/Cocoa.h>
 
-#include "protocol/candidates.pb.h"
+#include "protocol/candidate_window.pb.h"
 #include "protocol/renderer_command.pb.h"
 
 namespace mozc {
@@ -45,14 +45,14 @@ class RendererStyle;
 // according to the current candidates.
 @interface InfolistView : NSView {
  @private
-  mozc::commands::Candidates candidates_;
+  mozc::commands::CandidateWindow candidate_window_;
   const mozc::renderer::RendererStyle *style_;
   // The row which has focused background.
   int focusedRow_;
 }
 
-// setCandidates: sets the candidates to be rendered.
-- (void)setCandidates:(const mozc::commands::Candidates *)candidates;
+// setCandidateWindow: sets the candidate window to be rendered.
+- (void)setCandidateWindow:(const mozc::commands::CandidateWindow *)candidate_window;
 
 // Checks the |candidates_| and recalculates the layout.
 // It also returns the size which is necessary to draw all GUI elements.

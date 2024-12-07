@@ -39,7 +39,7 @@
 #include "absl/strings/string_view.h"
 #include "composer/composer.h"
 #include "converter/segments.h"
-#include "protocol/candidates.pb.h"
+#include "protocol/candidate_window.pb.h"
 #include "protocol/commands.pb.h"
 #include "session/internal/candidate_list.h"
 
@@ -51,15 +51,15 @@ class SessionOutput {
   SessionOutput(const SessionOutput &) = delete;
   SessionOutput &operator=(const SessionOutput &) = delete;
 
-  // Fill the Candidates_Candidate protobuf with the contents of candidate.
-  static void FillCandidate(const Segment &segment, const Candidate &candidate,
-                            commands::Candidates_Candidate *candidate_proto);
+  // Fill the CandidateWindow_Candidate protobuf with the contents of candidate.
+  static void FillCandidate(
+      const Segment &segment, const Candidate &candidate,
+      commands::CandidateWindow_Candidate *candidate_proto);
 
-  // Fill the Candidates protobuf with the contents of candidate_list.
-  static void FillCandidates(const Segment &segment,
-                             const CandidateList &candidate_list,
-                             size_t position,
-                             commands::Candidates *candidates_proto);
+  // Fill the CandidateWindow protobuf with the contents of candidate_list.
+  static void FillCandidateWindow(
+      const Segment &segment, const CandidateList &candidate_list,
+      size_t position, commands::CandidateWindow *candidate_window_proto);
 
   // Fill the CandidateList protobuf with the contents of
   // candidate_list.  Candidates in the candidate_list are flatten
@@ -80,11 +80,11 @@ class SessionOutput {
 
   // Fill the usages of Candidates protobuf with the contents of candidate_list.
   static void FillUsages(const Segment &segment, const CandidateList &cand_list,
-                         commands::Candidates *candidates_proto);
+                         commands::CandidateWindow *candidate_window_proto);
 
   // Fill the access key of Candidates protobuf with the sequence of shortcuts.
   static void FillShortcuts(absl::string_view shortcuts,
-                            commands::Candidates *candidates_proto);
+                            commands::CandidateWindow *candidate_window_proto);
 
   // Fill the sub_label of footer_proto.  This function should be
   // called on dev_channel and unittest.
@@ -93,7 +93,7 @@ class SessionOutput {
   // Fill the footer contents of Candidates protobuf.  If category is
   // modified, true is returned.  Otherwise false is returned.
   static bool FillFooter(commands::Category category,
-                         commands::Candidates *candidates_proto);
+                         commands::CandidateWindow *candidate_window_proto);
 
   // Fill the Preedit protobuf with the contents of composer as a preedit.
   static void FillPreedit(const composer::Composer &composer,
@@ -120,11 +120,11 @@ class SessionOutput {
       std::string key, std::string result, commands::Result *result_proto);
 
   // Fill the Result protobuf with the key and result strings
-  // nomalizing the string for a conversion result.
+  // normalizing the string for a conversion result.
   static void FillConversionResult(absl::string_view key, std::string result,
                                    commands::Result *result_proto);
 
-  // Fill the Result protobuf with the preedit string nomalizing the
+  // Fill the Result protobuf with the preedit string normalizing the
   // string for a preedit result.
   static void FillPreeditResult(absl::string_view preedit,
                                 commands::Result *result_proto);

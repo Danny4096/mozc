@@ -42,7 +42,7 @@ jobs:
         run: |
           python build_tools/update_deps.py
 
-      - name: Biuld Qt
+      - name: Build Qt
         shell: cmd
         working-directory: .\src
         run: |
@@ -104,7 +104,7 @@ jobs:
         run: |
           python build_tools/update_deps.py
 
-      - name: Biuld Qt
+      - name: Build Qt
         shell: cmd
         working-directory: .\src
         run: |
@@ -122,8 +122,16 @@ jobs:
         working-directory: .\src
         env:
           ANDROID_NDK_HOME: ""
+          USE_BAZEL_VERSION: "7.4.1"
         run: |
-          bazel --bazelrc=windows.bazelrc build //server:mozc_server //gui/tool:mozc_tool --config oss_windows --verbose_failures --cpu=x64_windows
+          bazel --bazelrc=windows.bazelrc build --config oss_windows --config release_build package
+
+      - name: upload Mozc64_bazel.msi
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mozc64_bazel.msi
+          path: src/bazel-bin/win32/installer/Mozc64.msi
+          if-no-files-found: warn
 
   test:
     # https://github.com/actions/runner-images/blob/main/images/windows/Windows2022-Readme.md

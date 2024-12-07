@@ -376,24 +376,12 @@ class ProgramFilesX86Cache {
     path->clear();
 
     wchar_t program_files_path_buffer[MAX_PATH] = {};
-#if defined(_M_X64)
-    // In 64-bit processes (such as Text Input Prosessor DLL for 64-bit apps),
-    // CSIDL_PROGRAM_FILES points 64-bit Program Files directory. In this case,
-    // we should use CSIDL_PROGRAM_FILESX86 to find server, renderer, and other
-    // binaries' path.
+    // For historical reasons Mozc executables have been installed under
+    // %ProgramFiles(x86)%.
+    // TODO(https://github.com/google/mozc/issues/1086): Stop using "(x86)".
     const HRESULT result =
         ::SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILESX86, nullptr,
                            SHGFP_TYPE_CURRENT, program_files_path_buffer);
-#elif defined(_M_IX86)
-    // In 32-bit processes (such as server, renderer, and other binaries),
-    // CSIDL_PROGRAM_FILES always points 32-bit Program Files directory
-    // even if they are running in 64-bit Windows.
-    const HRESULT result =
-        ::SHGetFolderPathW(nullptr, CSIDL_PROGRAM_FILES, nullptr,
-                           SHGFP_TYPE_CURRENT, program_files_path_buffer);
-#else  // !_M_X64 && !_M_IX86
-#error "Unsupported CPU architecture"
-#endif  // _M_X64, _M_IX86, and others
     if (FAILED(result)) {
       return result;
     }
@@ -409,11 +397,48 @@ class ProgramFilesX86Cache {
   HRESULT result_;
   std::string path_;
 };
+
+constexpr wchar_t kMozcTipClsid[] =
+    L"SOFTWARE\\Classes\\CLSID\\"
+#ifdef GOOGLE_JAPANESE_INPUT_BUILD
+    L"{D5A86FD5-5308-47EA-AD16-9C4EB160EC3C}"
+#else   // GOOGLE_JAPANESE_INPUT_BUILD
+    L"{10A67BC8-22FA-4A59-90DC-2546652C56BF}"
+#endif  // GOOGLE_JAPANESE_INPUT_BUILD
+    L"\\InprocServer32";
+
+std::string GetMozcInstallDirFromRegistry() {
+  // TSF requires the path of "mozc_tip64.dll" to be registered in the registry,
+  // which tells us Mozc's installation directory.
+  HKEY key = nullptr;
+  LSTATUS result =::RegOpenKeyExW(
+      HKEY_LOCAL_MACHINE, kMozcTipClsid, 0, KEY_READ | KEY_WOW64_64KEY, &key);
+  if (result != ERROR_SUCCESS) {
+    return "";
+  }
+
+  DWORD type = 0;
+  wchar_t buffer[MAX_PATH] = {};
+  DWORD buffer_size = sizeof(buffer);
+  result = ::RegQueryValueExW(
+      key, nullptr, nullptr, &type, reinterpret_cast<LPBYTE>(buffer),
+      &buffer_size);
+  ::RegCloseKey(key);
+  if (result != ERROR_SUCCESS || type != REG_SZ) {
+    return "";
+  }
+  return FileUtil::Dirname(win32::WideToUtf8(buffer));
+}
+
 }  // namespace
 #endif  // _WIN32
 
 std::string SystemUtil::GetServerDirectory() {
 #ifdef _WIN32
+  const std::string install_dir_from_registry = GetMozcInstallDirFromRegistry();
+  if (!install_dir_from_registry.empty()) {
+    return install_dir_from_registry;
+  }
   DCHECK(SUCCEEDED(Singleton<ProgramFilesX86Cache>::get()->result()));
 #if defined(GOOGLE_JAPANESE_INPUT_BUILD)
   return FileUtil::JoinPath(

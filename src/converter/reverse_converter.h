@@ -27,47 +27,27 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#import "mac/GoogleJapaneseInputServer.h"
+#ifndef MOZC_CONVERTER_REVERSE_CONVERTER_H_
+#define MOZC_CONVERTER_REVERSE_CONVERTER_H_
 
-#include <string>
+#include "absl/strings/string_view.h"
+#include "converter/immutable_converter_interface.h"
+#include "converter/segments.h"
 
-#include "absl/log/log.h"
-#include "base/const.h"
-#include "protocol/commands.pb.h"
+namespace mozc {
 
-@implementation GoogleJapaneseInputServer
-- (BOOL)registerRendererConnection {
-  NSString *connectionName = @kProductPrefix "_Renderer_Connection";
-  renderer_conection_ = [[NSConnection alloc] init];
-  [renderer_conection_ setRootObject:self];
-  return [renderer_conection_ registerName:connectionName];
-}
+namespace converter {
+class ReverseConverter {
+ public:
+  explicit ReverseConverter(
+      const ImmutableConverterInterface &immutable_converter);
 
-- (void)sendData:(NSData *)data {
-  if (current_controller_ == nil) {
-    return;
-  }
+  bool ReverseConvert(absl::string_view key, Segments *segments) const;
 
-  mozc::commands::SessionCommand command;
-  int32_t length = static_cast<int32_t>([data length]);
-  if (!command.ParseFromArray([data bytes], length)) {
-    return;
-  }
+ private:
+  const ImmutableConverterInterface &immutable_converter_;
+};
+}  // namespace converter
+}  // namespace mozc
 
-  [current_controller_ sendCommand:command];
-}
-
-- (void)outputResult:(NSData *)data {
-  mozc::commands::Output output;
-  int32_t length = static_cast<int32_t>([data length]);
-  if (!output.ParseFromArray([data bytes], length)) {
-    return;
-  }
-
-  [current_controller_ outputResult:&output];
-}
-
-- (void)setCurrentController:(id<ControllerCallback>)controller {
-  current_controller_ = controller;
-}
-@end
+#endif  // MOZC_CONVERTER_REVERSE_CONVERTER_H_

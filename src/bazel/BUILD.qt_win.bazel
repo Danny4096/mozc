@@ -25,7 +25,7 @@ cc_library(
         ],
     }),
     hdrs = glob([
-        "include"
+        "include",
     ]),
     includes = [
         "include",
@@ -40,4 +40,5 @@ exports_files([
     "bin/moc.exe",
     "bin/uic.exe",
     "bin/rcc.exe",
+    "bin/Qt6Core.dll",
 ])

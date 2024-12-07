@@ -105,9 +105,12 @@ class LanguageAwareRewriterTest : public testing::TestWithTempUserProfile {
     }
     Segment *segment = segments->mutable_conversion_segment(0);
     segment->set_key(*composition);
-    ConversionRequest request(&composer, &client_request, &default_config);
-
-    request.set_request_type(ConversionRequest::SUGGESTION);
+    const ConversionRequest request =
+        ConversionRequestBuilder()
+            .SetComposer(composer)
+            .SetRequest(client_request)
+            .SetRequestType(ConversionRequest::SUGGESTION)
+            .Build();
 
     return rewriter->Rewrite(request, segments);
   }
@@ -345,8 +348,11 @@ TEST_F(LanguageAwareRewriterTest, LanguageAwareInputUsageStats) {
     Segments segments;
     Segment *segment = segments.add_segment();
     segment->set_key(composition);
-    ConversionRequest request(&composer, &client_request, &default_config);
-    request.set_request_type(ConversionRequest::SUGGESTION);
+    const ConversionRequest request =
+        ConversionRequestBuilder()
+            .SetComposer(composer)
+            .SetRequestType(ConversionRequest::SUGGESTION)
+            .Build();
 
     EXPECT_TRUE(rewriter.Rewrite(request, &segments));
 
@@ -423,7 +429,9 @@ TEST_F(LanguageAwareRewriterTest, IsDisabledInTwelveKeyLayout) {
     composer::Composer composer(&table, &request, &config);
     InsertASCIISequence("query", &composer);
 
-    ConversionRequest conv_request(&composer, &request, &config);
+    const commands::Context context;
+    const ConversionRequest conv_request(composer, request, context, config,
+                                         {});
     EXPECT_EQ(rewriter.capability(conv_request), param.type);
   }
 }

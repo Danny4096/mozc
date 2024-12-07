@@ -41,7 +41,6 @@
 namespace mozc {
 using client::SendCommandInterface;
 using commands::RendererCommand;
-using commands::Candidates;
 
 namespace renderer {
 namespace mac {
@@ -148,18 +147,20 @@ bool CandidateController::ExecCommand(const RendererCommand &command) {
     return true;
   }
 
-  candidate_window_->SetCandidates(command_.output().candidates());
+  candidate_window_->SetCandidateWindow(command_.output().candidate_window());
 
   bool cascading_visible = false;
-  if (command_.output().has_candidates() && command_.output().candidates().has_subcandidates()) {
-    cascading_window_->SetCandidates(command_.output().candidates().subcandidates());
+  if (command_.output().has_candidate_window() &&
+      command_.output().candidate_window().has_sub_candidate_window()) {
+    cascading_window_->SetCandidateWindow(command_.output().candidate_window().sub_candidate_window());
     cascading_visible = true;
   }
 
   bool infolist_visible = false;
-  if (command_.output().has_candidates() && command_.output().candidates().has_usages() &&
-      command_.output().candidates().usages().information_size() > 0) {
-    infolist_window_->SetCandidates(command_.output().candidates());
+  if (command_.output().has_candidate_window() &&
+      command_.output().candidate_window().has_usages() &&
+      command_.output().candidate_window().usages().information_size() > 0) {
+    infolist_window_->SetCandidateWindow(command_.output().candidate_window());
     infolist_visible = true;
   }
 
@@ -172,12 +173,13 @@ bool CandidateController::ExecCommand(const RendererCommand &command) {
   }
 
   if (infolist_visible && !cascading_visible) {
-    const Candidates &candidates = command_.output().candidates();
-    if (candidates.has_focused_index() && candidates.candidate_size() > 0) {
-      const int focused_row = candidates.focused_index() - candidates.candidate(0).index();
-      if (candidates.candidate_size() >= focused_row &&
-          candidates.candidate(focused_row).has_information_id()) {
-        infolist_window_->DelayShow(candidates.usages().delay());
+    const commands::CandidateWindow &candidate_window = command_.output().candidate_window();
+    if (candidate_window.has_focused_index() && candidate_window.candidate_size() > 0) {
+      const int focused_row =
+          candidate_window.focused_index() - candidate_window.candidate(0).index();
+      if (candidate_window.candidate_size() >= focused_row &&
+          candidate_window.candidate(focused_row).has_information_id()) {
+        infolist_window_->DelayShow(candidate_window.usages().delay());
       } else {
         infolist_window_->DelayHide(kHideWindowDelay);
       }
@@ -202,7 +204,7 @@ void CandidateController::AlignWindows() {
       command_.preedit_rectangle().right() - command_.preedit_rectangle().left(),
       command_.preedit_rectangle().bottom() - command_.preedit_rectangle().top());
   // The origin point of command_.preedit_rectangle() is the left-top of the
-  // base screen which is set in GoogleJapaneseInputController. It is
+  // base screen which is set in MozcImkInputController. It is
   // unnecessary calculation but to support older version of GoogleJapaneseInput
   // process we should not change it. So we minus the height of the screen here.
   mozc::Rect preedit_rect(mozc::Point(command_.preedit_rectangle().left(),
@@ -211,7 +213,7 @@ void CandidateController::AlignWindows() {
 
   // This is a hacky way to check vertical writing.
   // TODO(komatsu): We should use the return value of attributesForCharacterIndex
-  // in GoogleJapaneseInputController.mm as a proper way.
+  // in MozcImkInputController as a proper way.
   const bool is_vertical = (preedit_size.height < preedit_size.width);
 
   // Expand the rect size to make a margin to the candidate window.
@@ -247,16 +249,16 @@ void CandidateController::AlignWindows() {
 
   // If there is no need to show cascading window, we just finish the
   // function here.
-  if (!command_.output().has_candidates() ||
-      !(command_.output().candidates().candidate_size() > 0) ||
-      !command_.output().candidates().has_subcandidates()) {
+  if (!command_.output().has_candidate_window() ||
+      !(command_.output().candidate_window().candidate_size() > 0) ||
+      !command_.output().candidate_window().has_sub_candidate_window()) {
     return;
   }
 
   // Fix cascading window position
   // 1. starting position is at the focused row
-  const Candidates &candidates = command_.output().candidates();
-  const int focused_row = candidates.focused_index() - candidates.candidate(0).index();
+  const commands::CandidateWindow &candidate_window = command_.output().candidate_window();
+  const int focused_row = candidate_window.focused_index() - candidate_window.candidate(0).index();
   mozc::Rect focused_rect = candidate_layout->GetRowRect(focused_row);
   // move the focused_rect to the monitor's coordinates
   focused_rect.origin.x += candidate_rect.origin.x;

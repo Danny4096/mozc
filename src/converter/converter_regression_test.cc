@@ -30,10 +30,11 @@
 #include <memory>
 
 #include "absl/log/check.h"
+#include "absl/strings/string_view.h"
 #include "composer/composer.h"
-#include "composer/table.h"
 #include "converter/converter_interface.h"
 #include "converter/segments.h"
+#include "engine/engine.h"
 #include "engine/engine_factory.h"
 #include "engine/engine_interface.h"
 #include "protocol/commands.pb.h"
@@ -44,48 +45,48 @@
 namespace mozc {
 namespace {
 
-using ::mozc::composer::Table;
+ConversionRequest ConvReq(absl::string_view key) {
+  composer::Composer composer;
+  composer.SetPreeditTextForTestOnly(key);
+  return ConversionRequestBuilder().SetComposer(composer).Build();
+}
 
 class ConverterRegressionTest : public testing::TestWithTempUserProfile {};
 
 TEST_F(ConverterRegressionTest, QueryOfDeathTest) {
-  std::unique_ptr<EngineInterface> engine = EngineFactory::Create().value();
+  std::unique_ptr<Engine> engine = EngineFactory::Create().value();
   ConverterInterface *converter = engine->GetConverter();
 
   CHECK(converter);
   {
     Segments segments;
-    EXPECT_TRUE(converter->StartConversionWithKey(&segments, "りゅきゅけmぽ"));
+    EXPECT_TRUE(
+        converter->StartConversion(ConvReq("りゅきゅけmぽ"), &segments));
   }
   {
     Segments segments;
-    EXPECT_TRUE(converter->StartConversionWithKey(&segments, "5.1,||t:1"));
+    EXPECT_TRUE(converter->StartConversion(ConvReq("5.1,||t:1"), &segments));
   }
   {
     Segments segments;
     // Converter returns false, but not crash.
-    EXPECT_FALSE(converter->StartConversionWithKey(&segments, ""));
+    EXPECT_FALSE(converter->StartConversion(ConvReq(""), &segments));
   }
   {
     Segments segments;
-    ConversionRequest conv_request;
-    // Create an empty composer.
-    const Table table;
-    const commands::Request request;
-    composer::Composer composer(&table, &request, nullptr);
-    conv_request.set_composer(&composer);
+    const ConversionRequest conv_request;
     // Converter returns false, but not crash.
     EXPECT_FALSE(converter->StartConversion(conv_request, &segments));
   }
 }
 
 TEST_F(ConverterRegressionTest, Regression3323108) {
-  std::unique_ptr<EngineInterface> engine = EngineFactory::Create().value();
+  std::unique_ptr<Engine> engine = EngineFactory::Create().value();
   ConverterInterface *converter = engine->GetConverter();
   Segments segments;
 
   EXPECT_TRUE(
-      converter->StartConversionWithKey(&segments, "ここではきものをぬぐ"));
+      converter->StartConversion(ConvReq("ここではきものをぬぐ"), &segments));
   EXPECT_EQ(segments.conversion_segments_size(), 3);
   const ConversionRequest default_request;
   EXPECT_TRUE(converter->ResizeSegment(&segments, default_request, 1, 2));

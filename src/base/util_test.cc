@@ -51,34 +51,52 @@
 namespace mozc {
 namespace {
 
+using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
+
+template <typename T>
+class TypedUtilTest : public ::testing::Test {};
+
+using StrTypes = ::testing::Types<std::string, absl::string_view>;
+TYPED_TEST_SUITE(TypedUtilTest, StrTypes);
+
+TYPED_TEST(TypedUtilTest, AppendUtf8Chars) {
+  using StrType = TypeParam;
+  {
+    std::vector<StrType> output;
+    Util::AppendUtf8Chars("", output);
+    EXPECT_EQ(output.size(), 0);
+  }
+  {
+    constexpr absl::string_view kInputs[] = {
+        "a", "あ", "亜", "\n", "a",
+    };
+    const std::string joined_string = absl::StrJoin(kInputs, "");
+
+    std::vector<StrType> output = {"x", "y", "z"};
+    Util::AppendUtf8Chars(joined_string, output);
+    EXPECT_THAT(output, ElementsAre("x", "y", "z", "a", "あ", "亜", "\n", "a"));
+  }
+}
 
 TEST(UtilTest, SplitStringToUtf8Chars) {
   {
-    std::vector<std::string> output;
-    Util::SplitStringToUtf8Chars("", &output);
+    const std::vector<std::string> output = Util::SplitStringToUtf8Chars("");
     EXPECT_EQ(output.size(), 0);
   }
-
   {
     const std::string kInputs[] = {
         "a", "あ", "亜", "\n", "a",
     };
     const std::string joined_string = absl::StrJoin(kInputs, "");
 
-    std::vector<std::string> output;
-    Util::SplitStringToUtf8Chars(joined_string, &output);
+    const std::vector<std::string> output =
+        Util::SplitStringToUtf8Chars(joined_string);
     EXPECT_THAT(output, ElementsAreArray(kInputs));
   }
 }
 
 TEST(UtilTest, SplitStringToUtf8Graphemes) {
-  {
-    std::vector<std::string> output;
-    Util::SplitStringToUtf8Chars("", &output);
-    EXPECT_EQ(output.size(), 0);
-  }
-
   {  // Single codepoint characters.
     const std::string kInputs[] = {
         "a", "あ", "亜", "\n", "a",
@@ -326,8 +344,10 @@ TEST(UtilTest, Utf8ToCodepoint) {
 }
 
 TEST(UtilTest, CodepointToUtf8) {
+  // Do nothing if |c| is NUL. Previous implementation of CodepointToUtf8 worked
+  // like this even though the reason is unclear.
   std::string output = Util::CodepointToUtf8(0);
-  EXPECT_EQ(output, absl::string_view("\0", 1));
+  EXPECT_TRUE(output.empty());
 
   output = Util::CodepointToUtf8(0x7F);
   EXPECT_EQ(output, "\x7F");
@@ -342,7 +362,34 @@ TEST(UtilTest, CodepointToUtf8) {
   output = Util::CodepointToUtf8(0x10000);
   EXPECT_EQ(output, "\xF0\x90\x80\x80");
   output = Util::CodepointToUtf8(0x1FFFFF);
-  EXPECT_EQ(output, "\uFFFD");
+  EXPECT_EQ(output, "\xF7\xBF\xBF\xBF");
+
+  // Buffer version.
+  char buf[7];
+
+  EXPECT_EQ(Util::CodepointToUtf8(0, buf), 0);
+  EXPECT_EQ(strcmp(buf, ""), 0);
+
+  EXPECT_EQ(Util::CodepointToUtf8(0x7F, buf), 1);
+  EXPECT_EQ(strcmp("\x7F", buf), 0);
+
+  EXPECT_EQ(Util::CodepointToUtf8(0x80, buf), 2);
+  EXPECT_EQ(strcmp("\xC2\x80", buf), 0);
+
+  EXPECT_EQ(Util::CodepointToUtf8(0x7FF, buf), 2);
+  EXPECT_EQ(strcmp("\xDF\xBF", buf), 0);
+
+  EXPECT_EQ(Util::CodepointToUtf8(0x800, buf), 3);
+  EXPECT_EQ(strcmp("\xE0\xA0\x80", buf), 0);
+
+  EXPECT_EQ(Util::CodepointToUtf8(0xFFFF, buf), 3);
+  EXPECT_EQ(strcmp("\xEF\xBF\xBF", buf), 0);
+
+  EXPECT_EQ(Util::CodepointToUtf8(0x10000, buf), 4);
+  EXPECT_EQ(strcmp("\xF0\x90\x80\x80", buf), 0);
+
+  EXPECT_EQ(Util::CodepointToUtf8(0x1FFFFF, buf), 4);
+  EXPECT_EQ(strcmp("\xF7\xBF\xBF\xBF", buf), 0);
 }
 
 TEST(UtilTest, CharsLen) {

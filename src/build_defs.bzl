@@ -43,9 +43,9 @@ See also: https://bazel.build/rules/bzl-style#rules
 """
 
 load("@build_bazel_rules_apple//apple:macos.bzl", "macos_application", "macos_bundle", "macos_unit_test")
+load("@windows_sdk//:windows_sdk_rules.bzl", "windows_resource")
 load(
     "//:config.bzl",
-    "BAZEL_TOOLS_PREFIX",
     "BRANDING",
     "MACOS_BUNDLE_ID_PREFIX",
     "MACOS_MIN_OS_VER",
@@ -128,6 +128,78 @@ def mozc_cc_test(name, tags = [], deps = [], copts = [], **kwargs):
 
 register_extension_info(
     extension = mozc_cc_test,
+    label_regex_for_dep = "{extension_name}",
+)
+
+def _mozc_gen_win32_resource_file(
+        name,
+        src,
+        utf8 = False):
+    """
+    Generates a resource file from the specified resource file and template.
+    """
+    args = []
+    if utf8:
+        args.append("--utf8")
+    mozc_run_build_tool(
+        name = name,
+        srcs = {
+            "--main": [src],
+            "--template": ["//build_tools:mozc_win32_resource_template.rc"],
+            "--version_file": ["//base:mozc_version_txt"],
+        },
+        outs = {
+            "--output": name,
+        },
+        args = args,
+        tool = "//build_tools:gen_win32_resource_header",
+    )
+
+def mozc_win32_resource_from_template(
+        name,
+        src,
+        manifests = [],
+        resources = [],
+        tags = MOZC_TAGS.WIN_ONLY,
+        target_compatible_with = ["@platforms//os:windows"],
+        **kwargs):
+    """A rule to generate Win32 resource file from a template.
+
+    Args:
+      name: name for the generated resource target.
+      src: a *.rc file to be overlayed to the template.
+      manifests: Win32 manifest files to be embedded.
+      resources: files to be referenced from the resource file.
+      tags: optional tags.
+      target_compatible_with: optional target_compatible_with.
+      **kwargs: other args for resource compiler.
+    """
+    generated_rc_file = name + "_gen.rc"
+    _mozc_gen_win32_resource_file(
+        generated_rc_file,
+        src = src,
+    )
+    _rc_defines = {
+        "Mozc": ["MOZC_BUILD"],
+        "GoogleJapaneseInput": ["GOOGLE_JAPANESE_INPUT_BUILD"],
+    }.get(BRANDING, [])
+
+    # Create main resource
+    win32_resource_files_main = windows_resource
+
+    win32_resource_files_main(
+        name = name,
+        rc_files = [":" + generated_rc_file],
+        manifests = manifests,
+        resources = resources,
+        defines = _rc_defines,
+        tags = tags,
+        target_compatible_with = target_compatible_with,
+        **kwargs
+    )
+
+register_extension_info(
+    extension = mozc_win32_resource_from_template,
     label_regex_for_dep = "{extension_name}",
 )
 
@@ -439,87 +511,6 @@ def mozc_macos_bundle(name, bundle_name, infoplists, strings = [], bundle_id = N
         tags = tags + MOZC_TAGS.MAC_ONLY,
         **kwargs
     )
-
-def _win_executable_transition_impl(
-        settings,  # @unused
-        attr):
-    features = []
-    if attr.static_crt:
-        features = ["static_link_msvcrt"]
-    return {
-        "//command_line_option:features": features,
-        "//command_line_option:cpu": attr.cpu,
-    }
-
-_win_executable_transition = transition(
-    implementation = _win_executable_transition_impl,
-    inputs = [],
-    outputs = [
-        "//command_line_option:features",
-        "//command_line_option:cpu",
-    ],
-)
-
-def _mozc_win_build_rule_impl(ctx):
-    input_file = ctx.file.target
-    output = ctx.actions.declare_file(
-        ctx.label.name + "." + input_file.extension,
-    )
-    if input_file.path == output.path:
-        fail("input=%d and output=%d are the same." % (input_file.path, output.path))
-
-    # Create a symlink as we do not need to create an actual copy.
-    ctx.actions.symlink(
-        output = output,
-        target_file = input_file,
-        is_executable = True,
-    )
-    return [DefaultInfo(
-        files = depset([output]),
-        executable = output,
-    )]
-
-# The follwoing CPU values are mentioned in https://bazel.build/configure/windows#build_cpp
-CPU = struct(
-    ARM64 = "arm64_windows",  # aarch64 (64-bit) environment
-    X64 = "x64_windows",  # x86-64 (64-bit) environment
-    X86 = "x64_x86_windows",  # x86 (32-bit) environment
-)
-
-# A custom rule to reference the given build target with the given build configurations.
-#
-# For instance, the following rule creates a target "my_target" with setting "cpu" as "x64_windows"
-# and setting "static_link_msvcrt" feature.
-#
-#   mozc_win_build_rule(
-#       name = "my_target",
-#       cpu = CPU.X64,
-#       static_crt = True,
-#       target = "//bath/to/target:my_target",
-#   )
-#
-# See the following page for the details on transition.
-# https://bazel.build/rules/lib/builtins/transition
-mozc_win_build_rule = rule(
-    implementation = _mozc_win_build_rule_impl,
-    cfg = _win_executable_transition,
-    attrs = {
-        "_allowlist_function_transition": attr.label(
-            default = BAZEL_TOOLS_PREFIX + "//tools/allowlists/function_transition_allowlist",
-        ),
-        "target": attr.label(
-            allow_single_file = [".dll", ".exe"],
-            doc = "the actual Bazel target to be built.",
-            mandatory = True,
-        ),
-        "static_crt": attr.bool(
-            default = False,
-        ),
-        "cpu": attr.string(
-            default = "x64_windows",
-        ),
-    },
-)
 
 def _get_value(args):
     for arg in args:

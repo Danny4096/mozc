@@ -30,6 +30,8 @@
 # Visibility:  please choose a more appropriate default for the package,
 # and update any rules that should be different.
 
+load("@com_google_protobuf//bazel:cc_proto_library.bzl", "cc_proto_library")
+load("@com_google_protobuf//bazel:proto_library.bzl", "proto_library")
 load(
     "//:build_defs.bzl",
     "mozc_cc_binary",
@@ -127,6 +129,7 @@ mozc_cc_test(
         "//base/file:temp_dir",
         "//base/strings:unicode",
         "//composer",
+        "//composer:query",
         "//composer:table",
         "//config:config_handler",
         "//converter:segments",
@@ -175,6 +178,7 @@ mozc_cc_library(
         "//converter:connector",
         "//converter:converter_interface",
         "//converter:immutable_converter_interface",
+        "//converter:node_list_builder",
         "//converter:segmenter",
         "//converter:segments",
         "//dictionary:pos_matcher",
@@ -262,6 +266,7 @@ mozc_cc_library(
         "//request:conversion_request",
         "//request:request_util",
         "//transliteration",
+        "@com_google_absl//absl/container:btree",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",

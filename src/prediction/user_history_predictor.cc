@@ -38,7 +38,6 @@
 #include <limits>
 #include <memory>
 #include <optional>
-#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -62,7 +61,6 @@
 #include "base/container/trie.h"
 #include "base/hash.h"
 #include "base/japanese_util.h"
-#include "base/thread.h"
 #include "base/util.h"
 #include "base/vlog.h"
 #include "composer/composer.h"
@@ -724,14 +722,14 @@ std::vector<TypeCorrectedQuery> UserHistoryPredictor::GetTypingCorrectedQueries(
   const int size = request.request()
                        .decoder_experiment_params()
                        .typing_correction_apply_user_history_size();
-  if (size == 0) return {};
+  if (size == 0 || !request.config().use_typing_correction()) return {};
 
   const engine::SupplementalModelInterface *supplemental_model =
       modules_.GetSupplementalModel();
   if (supplemental_model == nullptr) return {};
 
   const std::optional<std::vector<TypeCorrectedQuery>> corrected =
-      supplemental_model->CorrectComposition(request, segments.history_key());
+      supplemental_model->CorrectComposition(request, segments);
   if (!corrected) return {};
 
   std::vector<TypeCorrectedQuery> result = std::move(corrected.value());
@@ -1176,8 +1174,10 @@ bool UserHistoryPredictor::LookupEntry(RequestType request_type,
 }
 
 bool UserHistoryPredictor::Predict(Segments *segments) const {
-  ConversionRequest default_request;
-  default_request.set_request_type(ConversionRequest::PREDICTION);
+  const ConversionRequest default_request =
+      ConversionRequestBuilder()
+          .SetRequestType(ConversionRequest::PREDICTION)
+          .Build();
   return PredictForRequest(default_request, segments);
 }
 
@@ -1451,21 +1451,16 @@ void UserHistoryPredictor::GetInputKeyFromSegments(
   DCHECK(input_key);
   DCHECK(base);
 
-  if (!request.has_composer()) {
-    *input_key = segments.conversion_segment(0).key();
-    *base = segments.conversion_segment(0).key();
-    return;
-  }
-
   *input_key = request.composer().GetStringForPreedit();
-  std::set<std::string> expanded_set;
-  request.composer().GetQueriesForPrediction(base, &expanded_set);
+  // auto = std::pair<std::string, absl::btree_set<std::string>>
+  const auto [query_base, expanded_set] =
+      request.composer().GetQueriesForPrediction();
+  *base = std::move(query_base);
   if (!expanded_set.empty()) {
     *expanded = std::make_unique<Trie<std::string>>();
-    for (std::set<std::string>::const_iterator itr = expanded_set.begin();
-         itr != expanded_set.end(); ++itr) {
+    for (const std::string &expanded_key : expanded_set) {
       // For getting matched key, insert values
-      (*expanded)->AddEntry(*itr, *itr);
+      (*expanded)->AddEntry(expanded_key, expanded_key);
     }
   }
 }
@@ -1879,7 +1874,7 @@ void UserHistoryPredictor::MaybeRecordUsageStats(
 }
 
 void UserHistoryPredictor::MaybeRemoveUnselectedHistory(
-    const Segments &segments, float min_ratio) {
+    const Segments &segments) {
   const Segment &segment = segments.conversion_segment(0);
   if (segment.candidates_size() < 1 ||
       segment.segment_type() != Segment::FIXED_VALUE) {
@@ -1887,6 +1882,7 @@ void UserHistoryPredictor::MaybeRemoveUnselectedHistory(
   }
 
   static constexpr size_t kMaxHistorySize = 5;
+  static constexpr float kMinSelectedRatio = 0.05;
   for (size_t i = 0; i < std::min(segment.candidates_size(), kMaxHistorySize);
        ++i) {
     const Segment::Candidate &candidate = segment.candidate(i);
@@ -1902,7 +1898,7 @@ void UserHistoryPredictor::MaybeRemoveUnselectedHistory(
     const float selected_ratio =
         1.0 * std::max(entry->suggestion_freq(), entry->conversion_freq()) /
         entry->shown_freq();
-    if (selected_ratio < min_ratio) {
+    if (selected_ratio < kMinSelectedRatio) {
       entry->set_suggestion_freq(0);
       entry->set_conversion_freq(0);
       entry->set_shown_freq(0);
@@ -2014,12 +2010,7 @@ void UserHistoryPredictor::Finish(const ConversionRequest &request,
 
   InsertHistory(request_type, is_suggestion, last_access_time, segments);
 
-  const float min_ratio = request.request()
-                              .decoder_experiment_params()
-                              .user_history_prediction_min_selected_ratio();
-  if (0.0 < min_ratio && min_ratio <= 1.0) {
-    MaybeRemoveUnselectedHistory(*segments, min_ratio);
-  }
+  MaybeRemoveUnselectedHistory(*segments);
 }
 
 UserHistoryPredictor::SegmentsForLearning

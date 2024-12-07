@@ -43,11 +43,6 @@
     # Visual C++ Runtime Version.
     'vcruntime_ver%': '',
 
-    # Extra headers and libraries for Visual C++.
-    'msvs_includes%': [],
-    'msvs_libs_x86%': [],
-    'msvs_libs_x64%': [],
-
     'conditions': [
       # https://docs.microsoft.com/en-us/cpp/preprocessor/predefined-macros
       ['MSVS_VERSION=="2015"', {
@@ -131,29 +126,18 @@
               '/bigobj',
             ],
           },
-          'VCLibrarianTool': {
-            'AdditionalLibraryDirectories': [
-              '<@(msvs_libs_x86)',
-            ],
-            'AdditionalLibraryDirectories!': [
-              '<@(msvs_libs_x64)',
-            ],
-          },
           'VCLinkerTool': {
             'TargetMachine': '<(win_target_machine_x86)',
             'AdditionalOptions': [
               '/SAFESEH',
             ],
-            'AdditionalLibraryDirectories': [
-              '<@(msvs_libs_x86)',
-            ],
-            'AdditionalLibraryDirectories!': [
-              '<@(msvs_libs_x64)',
-            ],
             'EnableUAC': 'true',
             'UACExecutionLevel': '0',  # level="asInvoker"
             'UACUIAccess': 'false',    # uiAccess="false"
             'MinimumRequiredVersion': '10.0',
+            'AdditionalOptions': [
+              '/CETCOMPAT',
+            ],
           },
         },
         'msvs_configuration_attributes': {
@@ -175,21 +159,10 @@
               '/bigobj',
             ],
           },
-          'VCLibrarianTool': {
-            'AdditionalLibraryDirectories': [
-              '<@(msvs_libs_x64)',
-            ],
-            'AdditionalLibraryDirectories!': [
-              '<@(msvs_libs_x86)',
-            ],
-          },
           'VCLinkerTool': {
             'TargetMachine': '<(win_target_machine_x64)',
-            'AdditionalLibraryDirectories': [
-              '<@(msvs_libs_x64)',
-            ],
-            'AdditionalLibraryDirectories!': [
-              '<@(msvs_libs_x86)',
+            'AdditionalOptions': [
+              '/CETCOMPAT',
             ],
           },
         },
@@ -332,7 +305,6 @@
       '<@(absl_include_dirs)',
       '<(abs_depth)',
       '<(SHARED_INTERMEDIATE_DIR)',
-      '<@(msvs_includes)',
       '<(third_party_dir)/wil/include',
     ],
     'msvs_configuration_attributes': {
@@ -371,9 +343,6 @@
           'shell32.lib',
           'user32.lib',
           'uuid.lib',
-        ],
-        'AdditionalOptions': [
-          '/CETCOMPAT',
         ],
         'DataExecutionPrevention': '2',        # /NXCOMPAT
         'EnableCOMDATFolding': '2',            # /OPT:ICF

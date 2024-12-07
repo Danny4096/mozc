@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright 2010-2021, Google Inc.
 # All rights reserved.
 #
@@ -27,10 +28,42 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-"""Stub of rules_android forWORKSPACE.bazel."""
+"""Script to make a zip file of libmozc.so files for muchtiple archs."""
 
-# This file should be removed once we migrate to Bzlmod from WORKSPACE.
-# https://github.com/google/mozc/issues/1002
+import argparse
+import pathlib
+import shutil
+import tempfile
 
-def android_binary(**kwargs):
-    native.android_binary(**kwargs)
+
+def main():
+  parser = argparse.ArgumentParser()
+  parser.add_argument('--arm64', type=str)
+  parser.add_argument('--arm32', type=str)
+  parser.add_argument('--x86_32', type=str)
+  parser.add_argument('--x86_64', type=str)
+  parser.add_argument('--output', help='A path to output ZIP file', type=str)
+  args = parser.parse_args()
+
+  mappings = {
+      'arm64-v8a': pathlib.Path(args.arm64),
+      'armeabi-v7a': pathlib.Path(args.arm32),
+      'x86': pathlib.Path(args.x86_32),
+      'x86_64': pathlib.Path(args.x86_64),
+  }
+
+  output = pathlib.Path(args.output)
+
+  with tempfile.TemporaryDirectory() as tmp_dir:
+    root = pathlib.Path(tmp_dir)
+    for arch, src in mappings.items():
+      dest_dir = root.joinpath('libs').joinpath(arch)
+      dest_dir.mkdir(parents=True, exist_ok=True)
+      shutil.copy(src, dest_dir.joinpath('libmozc.so'))
+    shutil.make_archive(
+        str(output.with_suffix('')), format='zip', root_dir=tmp_dir
+    )
+
+
+if __name__ == '__main__':
+  main()

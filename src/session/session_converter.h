@@ -41,7 +41,6 @@
 
 #include "absl/strings/string_view.h"
 #include "converter/converter_interface.h"
-#include "converter/segments.h"
 #include "protocol/commands.pb.h"
 #include "protocol/config.pb.h"
 #include "request/conversion_request.h"
@@ -73,13 +72,6 @@ class SessionConverter : public SessionConverterInterface {
   // Returns the default conversion preferences to be used for custom
   // conversion.
   const ConversionPreferences &conversion_preferences() const override;
-
-  // Gets the selected candidate. If no candidate is selected, returns nullptr.
-  const Segment::Candidate *GetSelectedCandidateOfFocusedSegment()
-      const override;
-
-  // Gets the candidate specified by id.
-  const Segment::Candidate *GetCandidateById(int id) const override;
 
   // Sends a conversion request to the converter.
   bool Convert(const composer::Composer &composer) override;
@@ -246,11 +238,6 @@ class SessionConverter : public SessionConverterInterface {
   // Set setting by the context.
   void OnStartComposition(const commands::Context &context) override;
 
-  // Fills conversion request and segments with the conversion preferences.
-  static void SetConversionPreferences(const ConversionPreferences &preferences,
-                                       Segments *segments,
-                                       ConversionRequest *request);
-
   // Copies SessionConverter
   // TODO(hsumita): Copy all member variables.
   // Currently, converter_ is not copied.
@@ -345,7 +332,7 @@ class SessionConverter : public SessionConverterInterface {
 
   void FillConversion(commands::Preedit *preedit) const;
   void FillResult(commands::Result *result) const;
-  void FillCandidates(commands::Candidates *candidates) const;
+  void FillCandidateWindow(commands::CandidateWindow *candidate_window) const;
 
   // Fills protocol buffers with all flatten candidate words.
   void FillAllCandidateWords(commands::CandidateList *candidates) const;
@@ -363,8 +350,9 @@ class SessionConverter : public SessionConverterInterface {
       SessionConverterInterface::State commit_state,
       const commands::Context &context, size_t commit_segments_size);
 
+  // Sets request type and update the session_converter's state
   void SetRequestType(ConversionRequest::RequestType request_type,
-                      ConversionRequest *conversion_request);
+                      ConversionRequest::Options &options);
 
   // Creates a config for incognito mode from the current config.
   config::Config CreateIncognitoConfig();
@@ -417,7 +405,7 @@ class SessionConverter : public SessionConverterInterface {
 
   bool candidate_list_visible_;
 
-  // Mutable values of |config_|.  These values may be changed temporaliry per
+  // Mutable values of |config_|.  These values may be changed temporarily per
   // session.
   bool use_cascading_window_;
 };

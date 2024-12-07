@@ -27,40 +27,22 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// UserDataManagerInterface is responsible for the management of the
-// user data in the persistent storage, i.e. syncing, reloading, or
-// clear-out.
+#ifndef MOZC_MAC_RENDERER_RECEIVER_H_
+#define MOZC_MAC_RENDERER_RECEIVER_H_
 
-#ifndef MOZC_ENGINE_USER_DATA_MANAGER_INTERFACE_H_
-#define MOZC_ENGINE_USER_DATA_MANAGER_INTERFACE_H_
+#import <Foundation/Foundation.h>
 
-#include "absl/strings/string_view.h"
+#import "mac/common.h"
 
-namespace mozc {
+/** RendererReceiver is a class to receive messages from the renderer process. */
+@interface RendererReceiver : NSObject <ServerCallback>
 
-class UserDataManagerInterface {
- public:
-  virtual ~UserDataManagerInterface() = default;
+/** Initializes the receiver with the given connection name.
+ *
+ * @param name The connection name (e.g. "Mozc_Renderer_Connection").
+ */
+- (id)initWithName:(NSString *)name;
 
-  // Syncs mutable user data to local file system.
-  virtual bool Sync() = 0;
+@end
 
-  // Reloads mutable user data from local file system.
-  virtual bool Reload() = 0;
-
-  // Clears user history data.
-  virtual bool ClearUserHistory() = 0;
-
-  // Clears user prediction data.
-  virtual bool ClearUserPrediction() = 0;
-
-  // Clears unused user prediction data.
-  virtual bool ClearUnusedUserPrediction() = 0;
-
-  // Waits for syncer thread to complete.
-  virtual bool Wait() = 0;
-};
-
-}  // namespace mozc
-
-#endif  // MOZC_ENGINE_USER_DATA_MANAGER_INTERFACE_H_
+#endif  // MOZC_MAC_RENDERER_RECEIVER_H_

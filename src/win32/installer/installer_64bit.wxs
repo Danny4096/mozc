@@ -63,6 +63,11 @@
     <Launch Condition="Privileged" Message="Google 日本語入力をインストールするには管理者権限が必要です。" />
     <Media Id="1" Cabinet="GoogleJapaneseInput.cab" EmbedCab="yes" CompressionLevel="high" />
 
+    <Property Id="PROCESSOR_ARCHITECTURE">
+      <RegistrySearch Id="ProcessorArchitectureValue" Type="raw" Root="HKLM" Key="System\CurrentControlSet\Control\Session Manager\Environment" Name="PROCESSOR_ARCHITECTURE" />
+    </Property>
+    <Launch Condition="(NOT (PROCESSOR_ARCHITECTURE=&quot;ARM64&quot;)) OR UPGRADING OR (REMOVE=&quot;ALL&quot;)" Message="ARM64 環境へのインストールは未対応です。" />
+
     <!-- Set Add/Remove Program Icon -->
     <Icon Id="add_remove_program_icon.ico" SourceFile="$(var.AddRemoveProgramIconPath)" />
     <Property Id="ARPPRODUCTICON" Value="add_remove_program_icon.ico" />
@@ -104,6 +109,7 @@
     <Feature Id="GIMEJaInstall" Title="Google 日本語入力" Level="1">
       <ComponentRef Id="GIMEJaTIP32" />
       <ComponentRef Id="GIMEJaTIP64" />
+      <ComponentRef Id="GIMEJaTIP64Pdb" />
       <ComponentRef Id="GIMEJaBroker" />
       <ComponentRef Id="GIMEJaConverter" />
       <ComponentRef Id="GIMEJaCacheService" />
@@ -145,6 +151,7 @@
     <CustomAction Id="InitialInstallation" DllEntry="InitialInstallation" Execute="deferred" Impersonate="no" BinaryRef="GoogleIMEJaInstallerHelper.dll" />
     <CustomAction Id="InitialInstallationCommit" DllEntry="InitialInstallationCommit" Execute="commit" Impersonate="no" BinaryRef="GoogleIMEJaInstallerHelper.dll" />
     <CustomAction Id="EnableTipProfile" DllEntry="EnableTipProfile" Execute="commit" Impersonate="yes" BinaryRef="GoogleIMEJaInstallerHelper.dll" />
+    <CustomAction Id="FixupConfigFilePermission" DllEntry="FixupConfigFilePermission" Execute="commit" Impersonate="yes" BinaryRef="GoogleIMEJaInstallerHelper.dll" />
     <CustomAction Id="HideCancelButton" DllEntry="HideCancelButton" Return="ignore" BinaryRef="GoogleIMEJaInstallerHelper.dll" />
     <CustomAction Id="SaveCustomActionData" DllEntry="SaveCustomActionData" BinaryRef="GoogleIMEJaInstallerHelper.dll" />
     <CustomAction Id="RestoreServiceState" DllEntry="RestoreServiceState" Impersonate="no" Execute="deferred" Return="ignore" BinaryRef="GoogleIMEJaInstallerHelper.dll" />
@@ -172,7 +179,7 @@
         are currenly running. So the ShutdownServer action
         needs to be callled before the InstallValidate action.
       -->
-      <Custom Action="ShutdownServer" Before="InstallValidate" Condition="(REMOVE=&quot;ALL&quot;) AND (NOT UPGRADINGPRODUCTCODE)" />
+      <Custom Action="ShutdownServer" Before="InstallValidate" />
       <Custom Action="NewerVersionError" After="FindRelatedProducts" Condition="NEWERVERSIONDETECTED" />
       <!--
         RemoveExistingProducts needs to be scheduled between InstallExecute and
@@ -196,7 +203,8 @@
       <Custom Action="RegisterTIPRollback64" Before="RegisterTIP64" Condition="(NOT (REMOVE=&quot;ALL&quot;)) AND (VersionNT64) AND (NOT UPGRADING)" />
       <Custom Action="RegisterTIP64" Before="EnsureAllApplicationPackagesPermisssions" Condition="(NOT (REMOVE=&quot;ALL&quot;)) AND (VersionNT64)" />
       <Custom Action="EnsureAllApplicationPackagesPermisssions" Before="InitialInstallationCommit" Condition="(NOT (REMOVE=&quot;ALL&quot;))" />
-      <Custom Action="InitialInstallationCommit" Before="EnableTipProfile" Condition="(NOT (REMOVE=&quot;ALL&quot;)) AND (NOT UPGRADING)" />
+      <Custom Action="InitialInstallationCommit" Before="FixupConfigFilePermission" Condition="(NOT (REMOVE=&quot;ALL&quot;)) AND (NOT UPGRADING)" />
+      <Custom Action="FixupConfigFilePermission" Before="EnableTipProfile" Condition="NOT (REMOVE=&quot;ALL&quot;)" />
       <Custom Action="EnableTipProfile" Before="InstallFinalize" Condition="(NOT (REMOVE=&quot;ALL&quot;)) AND (NOT UPGRADING)" />
       <!-- show reboot dialog to execute pending file opartions -->
       <?if ($(var.VSConfigurationName) = "Release") ?>
@@ -244,6 +252,9 @@
             <File Id="GoogleIMEJaTIP64.dll" Name="GoogleIMEJaTIP64.dll" DiskId="1" Checksum="yes" Source="$(var.MozcTIP64Path)" Vital="yes">
               <Class Context="InprocServer32" ThreadingModel="apartment" Description="Google Japanese Input" Id="D5A86FD5-5308-47EA-AD16-9C4EB160EC3C" />
             </File>
+          </Component>
+          <Component Id="GIMEJaTIP64Pdb" Permanent="no" Bitness="always64">
+            <File Id="GoogleIMEJaTIP64.dll.pdb" Name="GoogleIMEJaTIP64.dll.pdb" DiskId="1" Checksum="yes" Source="$(var.MozcTIP64PdbPath)" Vital="yes" />
           </Component>
           <Component Id="GIMEJaBroker" Permanent="no">
             <File Id="GoogleIMEJaBroker.exe" Name="GoogleIMEJaBroker.exe" DiskId="1" Checksum="yes" Source="$(var.MozcBroker64Path)" Vital="yes" />
@@ -327,7 +338,7 @@
     </StandardDirectory>
 
     <!-- Write registry keys to make the installer compatible with Omaha. -->
-    <Component Id="OmahaRegister" Directory="TARGETDIR">
+    <Component Id="OmahaRegister" Directory="TARGETDIR" Bitness="always32">
       <RegistryValue Id="OmahaClientRegPv" Root="HKLM" Key="$(var.OmahaClientKey)" Name="pv" Value="$(var.MozcVersion)" Action="write" Type="string" />
       <RegistryValue Id="OmahaClientRegName" Root="HKLM" Key="$(var.OmahaClientKey)" Name="name" Value="Google 日本語入力" Action="write" Type="string" />
       <RegistryValue Id="OmahaClientRegLang" Root="HKLM" Key="$(var.OmahaClientKey)" Name="lang" Value="ja" Action="write" Type="string" />
@@ -348,7 +359,7 @@
       <RegistryValue Id="SysProcsGIMEJaRenderer" Root="HKLM" Key="SYSTEM\CurrentControlSet\Control\Terminal Server\SysProcs" Name="GoogleIMEJaRenderer.exe" Value="0" Action="write" Type="integer" />
     </Component>
 
-    <Component Id="OmahaRegLaunchCmdLine" Permanent="no" Directory="TARGETDIR" Condition="(NOT UPGRADING)">
+    <Component Id="OmahaRegLaunchCmdLine" Permanent="no" Directory="TARGETDIR" Condition="(NOT UPGRADING)" Bitness="always32">
       <RegistryValue Id="OmahaLaunchCmdLineValue" Root="HKLM" Key="$(var.OmahaClientStateKey)" Name="InstallerSuccessLaunchCmdLine" Action="write" Type="string" Value="&quot;[GIMEJaDir]GoogleIMEJaTool.exe&quot; --mode=post_install_dialog" />
     </Component>
 

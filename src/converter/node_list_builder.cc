@@ -27,27 +27,21 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "converter/immutable_converter_interface.h"
+#include "converter/node_list_builder.h"
 
-#include "absl/log/log.h"
-#include "converter/segments.h"
-#include "request/conversion_request.h"
+#include <atomic>
+#include <cstdint>
 
 namespace mozc {
 
-// This method is a proxy to the ConvertForRequest to keep the backward
-// compatibility.
-// TODO(hidehiko): Get rid of this method when we deprecate it.
-bool ImmutableConverterInterface::Convert(Segments *segments) const {
-  const ConversionRequest request;
-  return ConvertForRequest(request, segments);
+std::atomic<int32_t> gTypingCorrectionLegacyExpansionMode = 0;
+
+void SetTypingCorrectionLegacyExpansionMode(int32_t mode) {
+  gTypingCorrectionLegacyExpansionMode.store(mode);
 }
 
-bool ImmutableConverterInterface::ConvertForRequest(
-    const ConversionRequest &request, Segments *segments) const {
-  // TODO(hidehiko): Get rid of this default implementation.
-  LOG(FATAL) << "Please implement ConvertForRequest method.";
-  return false;
+int32_t GetTypingCorrectionLegacyExpansionMode() {
+  return gTypingCorrectionLegacyExpansionMode.load();
 }
 
 }  // namespace mozc

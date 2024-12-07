@@ -291,6 +291,7 @@ mozc_objc_library(
     sdk_frameworks = [
         "Carbon",
         "Cocoa",
+        "Foundation",
     ],
     deps = [
         ":renderer_interface",
@@ -304,12 +305,12 @@ mozc_objc_library(
         "//base/mac:mac_util",
         "//client:client_interface",
         "//mac:common",
-        "//protocol:candidates_cc_proto",
+        "//protocol:candidate_window_cc_proto",
         "//protocol:commands_cc_proto",
         "//protocol:renderer_cc_proto",
-        "@com_google_absl//absl/base",
         "@com_google_absl//absl/log",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/synchronization",
     ],
 )

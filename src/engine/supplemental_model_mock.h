@@ -58,23 +58,15 @@ class MockSupplementalModel : public SupplementalModelInterface {
               (const, override));
   MOCK_METHOD(std::optional<std::vector<composer::TypeCorrectedQuery>>,
               CorrectComposition,
-              (const ConversionRequest &request, absl::string_view context),
+              (const ConversionRequest &request, const Segments &segments),
               (const, override));
   MOCK_METHOD(void, PopulateTypeCorrectedQuery,
               (const ConversionRequest &request, const Segments &segments,
-               std::vector<prediction::Result> *results),
-              (const, override));
-  MOCK_METHOD(void, RerankTypingCorrection,
-              (const ConversionRequest &request, const Segments &segments,
-               std::vector<absl::Nonnull<const prediction::Result *>> *results),
-              (const, override));
-  MOCK_METHOD(bool, ShouldRevertTypingCorrection,
-              (const ConversionRequest &request, const Segments &segments,
-               absl::Span<const prediction::Result> literal_results,
-               absl::Span<const prediction::Result> typing_corrected_results),
+               absl::Span<prediction::Result> results),
               (const, override));
   MOCK_METHOD(void, PostCorrect,
-              (const ConversionRequest &, absl::Nonnull<Segments *> segments),
+              (const ConversionRequest &, const Segments &egments,
+               std::vector<prediction::Result> &results),
               (const, override));
   MOCK_METHOD(void, RescoreResults,
               (const ConversionRequest &request, const Segments &segments,

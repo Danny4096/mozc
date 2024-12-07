@@ -27,64 +27,57 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# platforms for --android_platforms option.
-# In .bazelrc, the values are specified as --android_platforms=//bazel/android:arm64-v8a
-# Reference: https://blog.bazel.build/2023/11/15/android-platforms.html
+"""Repository rule for dotnet tool."""
 
-load("//bazel:stubs.bzl", "bzl_library")
+BUILD_TEMPLATE = """
+package(
+    default_visibility = ["//visibility:public"],
+)
 
-package(default_visibility = [
-    "//:__subpackages__",
+exports_files([
+    "{executable}",  # version {version}
 ])
+"""
 
-# Platform names are used for the directory names of the JNI library.
-platform(
-    name = "armeabi-v7a",
-    constraint_values =
-        [
-            "@platforms//cpu:armv7",
-            "@platforms//os:android",
-        ],
-)
+def _dotnet_tool_repo_impl(repo_ctx):
+    is_windows = repo_ctx.os.name.lower().startswith("win")
+    if not is_windows:
+        repo_ctx.file("BUILD.bazel", "")
+        return
 
-platform(
-    name = "arm64-v8a",
-    constraint_values =
-        [
-            "@platforms//cpu:arm64",
-            "@platforms//os:android",
-        ],
-)
+    repo_root = repo_ctx.path(".")
+    dotnet_tool = repo_ctx.which("dotnet.exe")
+    tool_name = repo_ctx.attr.tool_name
+    if not tool_name:
+        # In bzlmod, repo_ctx.attr.name has a prefix like "_main~_repo_rules~wix".
+        # Note also that Bazel 8.0+ uses "+" instead of "~".
+        # https://github.com/bazelbuild/bazel/issues/23127
+        tool_name = repo_ctx.attr.name.replace("~", "+").split("+")[-1]
+    version = repo_ctx.attr.version
 
-platform(
-    name = "riscv64",
-    constraint_values =
-        [
-            "@platforms//cpu:riscv64",
-            "@platforms//os:android",
-        ],
-)
+    repo_ctx.execute([
+        dotnet_tool,
+        "tool",
+        "install",
+        tool_name,
+        "--version",
+        version,
+        "--tool-path",
+        repo_root,
+    ])
 
-platform(
-    name = "x86",
-    constraint_values =
-        [
-            "@platforms//cpu:x86_32",
-            "@platforms//os:android",
-        ],
-)
+    build_file_data = BUILD_TEMPLATE.format(
+        executable = tool_name + ".exe",
+        version = version,
+    )
+    repo_ctx.file("BUILD.bazel", build_file_data, executable = False)
 
-platform(
-    name = "x86_64",
-    constraint_values = [
-        "@platforms//cpu:x86_64",
-        "@platforms//os:android",
-    ],
-)
-
-bzl_library(
-    name = "rules_bzl",
-    srcs = ["rules.bzl"],
-    parse_tests = False,
-    visibility = ["//visibility:private"],
+dotnet_tool_repository = repository_rule(
+    implementation = _dotnet_tool_repo_impl,
+    configure = True,
+    local = True,
+    attrs = {
+        "tool_name": attr.string(),
+        "version": attr.string(mandatory = True),
+    },
 )

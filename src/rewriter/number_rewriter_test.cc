@@ -40,6 +40,7 @@
 #include "absl/strings/string_view.h"
 #include "base/number_util.h"
 #include "base/strings/assign.h"
+#include "composer/composer.h"
 #include "config/character_form_manager.h"
 #include "config/config_handler.h"
 #include "converter/segments.h"
@@ -216,8 +217,9 @@ TEST_F(NumberRewriterTest, RequestType) {
     candidate->rid = pos_matcher_.GetNumberId();
     candidate->value = "012";
     candidate->content_value = "012";
-    ConversionRequest request;
-    request.set_request_type(test_data.request_type_);
+    const ConversionRequest request =
+        ConversionRequestBuilder().SetRequestType(test_data.request_type_)
+            .Build();
     EXPECT_TRUE(number_rewriter->Rewrite(request, &segments));
     EXPECT_EQ(seg->candidates_size(), test_data.expected_candidate_number_);
   }
@@ -908,18 +910,20 @@ TEST_F(NumberRewriterTest, PreserveUserDictionaryAttribute) {
 TEST_F(NumberRewriterTest, DuplicateCandidateTest) {
   // To reproduce issue b/6714268.
   std::unique_ptr<NumberRewriter> number_rewriter(CreateNumberRewriter());
-  ConversionRequest convreq;
   commands::Request request;
-  convreq.set_request(&request);
   std::unique_ptr<NumberRewriter> rewriter(CreateNumberRewriter());
 
   {
     request.set_mixed_conversion(true);
+    const ConversionRequest convreq =
+      ConversionRequestBuilder().SetRequest(request).Build();
     EXPECT_EQ(rewriter->capability(convreq), RewriterInterface::ALL);
   }
 
   {
     request.set_mixed_conversion(false);
+    const ConversionRequest convreq =
+      ConversionRequestBuilder().SetRequest(request).Build();
     EXPECT_EQ(rewriter->capability(convreq), RewriterInterface::CONVERSION);
   }
 }
@@ -1160,10 +1164,7 @@ void LearnNumberStyle(const ConversionRequest &request,
 
 TEST_F(NumberRewriterTest, NumberStyleLearningNotEnabled) {
   std::unique_ptr<NumberRewriter> rewriter(CreateNumberRewriter());
-  commands::Request request;
-  ConversionRequest convreq(nullptr, &request,
-                            &config::ConfigHandler::DefaultConfig());
-
+  const ConversionRequest convreq;
   LearnNumberStyle(convreq, pos_matcher_, *rewriter);
 
   {
@@ -1197,8 +1198,8 @@ INSTANTIATE_TEST_SUITE_P(
 TEST_P(NumberStyleLearningTest, NumberRewriterTest) {
   std::unique_ptr<NumberRewriter> rewriter(CreateNumberRewriter());
   const commands::Request request = GetParam();
-  ConversionRequest convreq(nullptr, &request,
-                            &config::ConfigHandler::DefaultConfig());
+  const ConversionRequest convreq =
+      ConversionRequestBuilder().SetRequest(request).Build();
 
   LearnNumberStyle(convreq, pos_matcher_, *rewriter);
 
@@ -1248,6 +1249,31 @@ TEST_P(NumberStyleLearningTest, NumberRewriterTest) {
     ASSERT_GT(new_segments.conversion_segment(0).candidates_size(), 3);
     ASSERT_NE(new_segments.conversion_segment(0).candidate(3).value, "2,000");
   }
+}
+
+TEST_F(NumberRewriterTest, NoModification) {
+  std::unique_ptr<NumberRewriter> number_rewriter(CreateNumberRewriter());
+  Segments segments;
+  Segment *seg = segments.push_back_segment();
+  for (int i = 0; i < 3; ++i) {
+    Segment::Candidate *candidate = seg->add_candidate();
+    candidate->lid = pos_matcher_.GetGeneralNounId();
+    candidate->rid = pos_matcher_.GetGeneralNounId();
+    candidate->key = "さん";
+    candidate->content_key = candidate->key;
+    candidate->value = "3";
+    candidate->content_value = candidate->value;
+    candidate->cost = 5925;
+    candidate->wcost = 5000;
+    if (i == 0) {
+      candidate->attributes = Segment::Candidate::NO_MODIFICATION;
+    }
+  }
+
+  EXPECT_EQ(seg->candidates_size(), 3);
+  EXPECT_TRUE(number_rewriter->Rewrite(default_request_, &segments));
+  EXPECT_EQ(seg->candidate(0).value, "3");
+  EXPECT_GT(seg->candidates_size(), 3);
 }
 
 }  // namespace mozc

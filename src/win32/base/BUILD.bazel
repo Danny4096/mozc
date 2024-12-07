@@ -36,7 +36,6 @@ load(
     "mozc_cc_test",
     "mozc_cc_win32_library",
 )
-load("//bazel:stubs.bzl", "windows")  # @unused
 load(
     "//bazel/win32:build_defs.bzl",
     "features_gdi",
@@ -54,7 +53,6 @@ mozc_cc_library(
     target_compatible_with = ["@platforms//os:windows"],
     deps = [
         "//base:system_util",
-        "//client:client_interface",
         "//config:config_handler",
         "//protocol:config_cc_proto",
         "//session:key_info_util",

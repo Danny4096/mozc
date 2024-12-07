@@ -101,22 +101,18 @@ void AddCandidate(std::string key, std::string value, int index,
 // triggered on reverse conversion only.
 bool UnicodeRewriter::RewriteToUnicodeCharFormat(
     const ConversionRequest &request, Segments *segments) const {
-  if (!request.has_composer()) {
-    return false;
-  }
-
   if (request.composer().source_text().empty() ||
       segments->conversion_segments_size() != 1) {
     return false;
   }
 
-  const std::string &source_text = request.composer().source_text();
+  absl::string_view source_text = request.composer().source_text();
   const size_t source_text_size = Util::CharsLen(source_text);
   if (source_text_size != 1) {
     return false;
   }
 
-  const std::string &source_char = request.composer().source_text();
+  absl::string_view source_char = request.composer().source_text();
   const char32_t codepoint = Util::Utf8ToCodepoint(source_char);
   std::string value = absl::StrFormat("U+%04X", codepoint);
 
